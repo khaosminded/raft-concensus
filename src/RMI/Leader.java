@@ -1,30 +1,18 @@
 package RMI;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import raft.*;
 
-public class Leader extends Follower{
+public class Leader extends Candidate{
     ArrayList nextIndex;
     ArrayList matchIndex;
 
-    public Leader() {
-        super();
+    public Leader(ArrayList<InetSocketAddress> mbpList) {
+        super(mbpList);
         nextIndex=new ArrayList();
         matchIndex=new ArrayList();
     }
-    ArrayList getMbpList()
-    {
-        ArrayList list=new ArrayList();
-        
-        return list;
-    }
-    void broadCast()
-    {
-        
-    }
-    void AppendEntriesToLog(){
-        
-    
-    }
+
+
     
 }

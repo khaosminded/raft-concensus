@@ -18,17 +18,19 @@ public class Follower implements RMIinterface {
     static int commitIndex = 0;
     static int lastApplied = 0;
     //flags to ensure leader alive
-    static Timer timer;
+    static private Timer timer;
     static int[] interval = {500, 1000};
-    static public volatile boolean isLeaderAlive = false;
+    static volatile boolean isLeaderAlive = false;
     static int currentLeader;
-
+    //ID //TODO
+    static int id;
+    
     public Follower() {
 
     }
 
     @Override
-    public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, int lastLogTerm) {
+    public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm) {
         //init result {term,voteGranted}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -61,7 +63,7 @@ public class Follower implements RMIinterface {
     }
 
     @Override
-    public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, int prevLogTerm,
+    public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
             ArrayList<Entry> entries, int leaderCommit) {
         //init result {term,success}
         ArrayList result = new ArrayList();
@@ -122,7 +124,10 @@ public class Follower implements RMIinterface {
         heartBeat(leaderId);
         return result;
     }
-
+    public void setId(int id)
+    {
+        this.id=id;
+    }
     private void heartBeat(int leaderId) {
         isLeaderAlive = true;
         this.currentLeader = leaderId;
@@ -163,7 +168,8 @@ public class Follower implements RMIinterface {
 
             } catch (InterruptedException ex) {
                 Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
-                System.out.println("electionTimer restart..");
+                System.out.println("followerTimer restart..");
+                return;
             }
             isLeaderAlive = false;
         }

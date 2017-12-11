@@ -1,15 +1,155 @@
 package RMI;
 
-import raft.*;
+import java.net.InetSocketAddress;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class Candidate extends Follower{
+public class Candidate extends Follower {
 
-    public Candidate() {
+    static ArrayList<InetSocketAddress> mbpList;
+    static ArrayList<Boolean> votePool;
+    static ArrayList<Long> termPool;
+    static private Timer timer;
+
+    public Candidate(ArrayList<InetSocketAddress> mbpList) {
         super();
+        setMbpList(mbpList);
+
     }
-    
-    
-    void RequestVote(){
+
+    private void broadCast() {
+        for (int i = 0; i < mbpList.size(); i++) {
+            if (i == id) {
+                continue;
+            }
+            callRequestVote call = new callRequestVote(mbpList.get(i), i);
+            call.run();
+        }
     }
-    
+
+    public void setMbpList(ArrayList<InetSocketAddress> mbpList) {
+        votePool.clear();
+        this.mbpList.clear();
+        termPool.clear();
+
+        this.mbpList.addAll(mbpList);
+        for (int i = 0; i < mbpList.size(); i++) {
+            votePool.add(false);
+            termPool.add(currentTerm);
+        }
+    }
+
+    private void startElectionTimer() {
+        int period;
+        period = (int) (Math.random() * (interval[1] - interval[0]) + interval[0]);
+        timer = new Timer(period);
+        timer.run();
+    }
+
+    private void endElectionTimer() {
+        timer.interrupt();
+        try {
+            timer.join();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Follower.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    private class Timer extends Thread {
+
+        int sleeptime;
+
+        public Timer(int sleeptime) {
+            super();
+            this.sleeptime = sleeptime;
+        }
+
+        @Override
+        public void run() {
+
+            try {
+                Thread.sleep(sleeptime);
+                //timeout!!
+
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
+                System.out.println("electionTimer restart..");
+                return;
+            }
+        }
+
+    }
+
+    private class callRequestVote extends Thread {
+
+        InetSocketAddress host;
+        int hostid;
+
+        public callRequestVote(InetSocketAddress host, int hostid) {
+            this.host = host;
+            this.hostid = hostid;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Registry registry = LocateRegistry.getRegistry(host.getHostString());
+                RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
+                int lastLogIndex = log.size() > 0 ? log.size() - 1 : 0;
+                long lastLogTerm = log.size() > 0 ? log.get(log.size() - 1).getT() : 0;
+                ArrayList result;
+                //TODO might exist problems here
+                result = stub.RequestVote(currentTerm, id, lastLogIndex, lastLogTerm);
+                termPool.set(hostid, (long) result.get(0));
+                votePool.set(hostid, (boolean) result.get(1));
+
+            } catch (RemoteException ex) {
+                Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (NotBoundException ex) {
+                Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+
+    void runCandidate() {
+        while (!isLeaderAlive) {
+            /**
+             * On conversion to candidate, start election: Increment currentTerm
+             * Vote for self Reset election timer Send RequestVote RPCs to all
+             * other servers
+             */
+            currentTerm++;
+            votePool.set(id, true);
+            startElectionTimer();
+            broadCast();
+
+            
+                /**
+                 * votes received from majority of servers: become leader
+                 */
+                
+                //TODO  how to abstract the convertion from Candidate to Leader??
+                
+                /**
+                 * If AppendEntries RPC received from new leader: convert to
+                 * follower
+                 */
+                
+                //TODO  how to abstract the convertion from Candidate to Leader??
+                
+                /**
+                 * If election timeout elapses: start new election
+                 */
+                
+            try {    timer.join();
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
 }
