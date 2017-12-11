@@ -23,6 +23,10 @@ public class Log {
     {
         return this.entries.get(index);
     }
+    public int size()
+    {
+        return this.entries.size();
+    }
     synchronized public void add(Entry e)
     {
         entries.add(e);

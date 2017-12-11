@@ -5,7 +5,6 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import raft.*;
-import RMI.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,22 +15,49 @@ public class Follower implements RMIinterface {
     static int votedFor;
     static Log log = new Log();
     //Volatile state on all servers:
-    int commitIndex;
-    int lastApplied;
+    static int commitIndex = 0;
+    static int lastApplied = 0;
     //flags to ensure leader alive
-    Timer t;
+    static Timer timer;
     static int[] interval = {500, 1000};
-    public volatile boolean isLeaderAlive = false;
-    int currentLeader;
+    static public volatile boolean isLeaderAlive = false;
+    static int currentLeader;
 
     public Follower() {
-        commitIndex = 0;
-        lastApplied = 0;
+
     }
 
     @Override
     public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, int lastLogTerm) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        //init result {term,voteGranted}
+        ArrayList result = new ArrayList();
+        result.add(this.currentTerm > term ? this.currentTerm : term);
+        result.add(true);
+        /**
+         * 1. Reply false if term < currentTerm (§5.1)
+         */
+        if (this.currentTerm > term) {
+            result.set(1, false);
+            return result;
+        }
+        /**
+         * 2. If votedFor is null or candidateId, and candidate’s log is at
+         * least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
+         *
+         * MORE up-to-date log is defined as log with:  * Higher term # in last
+         * log entry  * --- OR ---  * When term of last log entries match, log
+         * with more entries
+         */
+        if ((votedFor == 0 || votedFor == candidateId)
+                && (log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true
+                || log.size() < lastLogIndex + 1)) {
+            result.set(1, true);
+            return result;
+        } else {
+            result.set(1, false);
+            return result;
+        }
+
     }
 
     @Override
@@ -100,13 +126,24 @@ public class Follower implements RMIinterface {
     private void heartBeat(int leaderId) {
         isLeaderAlive = true;
         this.currentLeader = leaderId;
+        endElectionTimer();
+        startElectionTimer();
     }
 
     private void startElectionTimer() {
         int period;
         period = (int) (Math.random() * (interval[1] - interval[0]) + interval[0]);
-        Timer t = new Timer(period);
-        t.run();
+        timer = new Timer(period);
+        timer.run();
+    }
+
+    private void endElectionTimer() {
+        timer.interrupt();
+        try {
+            timer.join();
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Follower.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     private class Timer extends Thread {
@@ -123,10 +160,12 @@ public class Follower implements RMIinterface {
             try {
                 Thread.sleep(sleeptime);
                 //timeout!!
-                isLeaderAlive = false;
+
             } catch (InterruptedException ex) {
                 Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
+                System.out.println("electionTimer restart..");
             }
+            isLeaderAlive = false;
         }
 
     }
