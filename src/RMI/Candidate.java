@@ -8,6 +8,8 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import raft.Protocol;
+import raft.Protocol.RAFT;
 
 public class Candidate extends Follower {
 
@@ -74,11 +76,12 @@ public class Candidate extends Follower {
 
             try {
                 Thread.sleep(sleeptime);
+                System.out.println("electionTimer restart..");
                 //timeout!!
 
             } catch (InterruptedException ex) {
                 Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
-                System.out.println("electionTimer restart..");
+                System.out.println("electionTimer interrupt..");
                 return;
             }
         }
@@ -115,8 +118,18 @@ public class Candidate extends Follower {
             }
         }
     }
-
-    void runCandidate() {
+    boolean isMajority(ArrayList<Boolean> array)
+    {
+        int N=array.size();
+        int majorty=N/2+1;
+        int count=0;
+        for(int i=0;i<array.size();i++)
+            if(array.get(i))
+                count++;
+        return majorty<=count;
+    }
+    public void runCandidate() {
+        //congestion method
         while (!isLeaderAlive) {
             /**
              * On conversion to candidate, start election: Increment currentTerm
@@ -128,24 +141,29 @@ public class Candidate extends Follower {
             startElectionTimer();
             broadCast();
 
-            
-                /**
-                 * votes received from majority of servers: become leader
-                 */
-                
-                //TODO  how to abstract the convertion from Candidate to Leader??
-                
-                /**
-                 * If AppendEntries RPC received from new leader: convert to
-                 * follower
-                 */
-                
-                //TODO  how to abstract the convertion from Candidate to Leader??
-                
-                /**
-                 * If election timeout elapses: start new election
-                 */
-                
+            /**
+             * votes received from majority of servers: become leader
+             */
+            if(isMajority(votePool))
+            {
+                state=RAFT.LEADER;
+                currentLeader=id;
+                endElectionTimer();
+                return;
+            }
+            /**
+             * If AppendEntries RPC received from new leader: convert to
+             * follower
+             */
+            if(isLeaderAlive)    
+            {
+                state=RAFT.FOLLOWER;
+                endElectionTimer();
+                return;                
+            }
+            /**
+             * If election timeout elapses: start new election
+             */
             try {    timer.join();
             } catch (InterruptedException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);

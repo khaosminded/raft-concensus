@@ -12,6 +12,11 @@ public class Leader extends Candidate{
         nextIndex=new ArrayList();
         matchIndex=new ArrayList();
     }
+    
+    public void runLeader()
+    {
+        
+    }
 
 
     

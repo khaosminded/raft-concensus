@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import raft.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import raft.Protocol.RAFT;
 
 public class Follower implements RMIinterface {
 
@@ -22,8 +23,10 @@ public class Follower implements RMIinterface {
     static int[] interval = {500, 1000};
     static volatile boolean isLeaderAlive = false;
     static int currentLeader;
-    //ID //TODO
+    //ID //TODO 
     static int id;
+    //critical flag
+    static volatile RAFT state=RAFT.FOLLOWER;
     
     public Follower() {
 
@@ -172,11 +175,19 @@ public class Follower implements RMIinterface {
                 return;
             }
             isLeaderAlive = false;
+            //TODO
+            System.out.println("followe->candidate");
+            state=RAFT.CANDIDATE;
         }
 
     }
-
-    void runFollower() {
+    RAFT getState()
+    {
+        return state;
+    }
+   
+    public void runFollower() {
+        //init, uncongested
         try {
             //TODO ensure there is no side effect for not unbinding
             String name = "raftFollower";
