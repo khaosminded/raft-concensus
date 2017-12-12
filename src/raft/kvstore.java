@@ -5,19 +5,13 @@ package raft;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import static raft.Protocol.Operation.*;
 
 public class kvstore {
 
-    private static volatile Map<String, String> map = new ConcurrentHashMap<>();
-    private Protocol.TYPE type;
+    private volatile Map<String, String> map;
 
     public kvstore() {
-
-    }
-
-    public kvstore(Protocol.TYPE type) {
-        this.type = type;
+        this.map = new ConcurrentHashMap<>();
     }
 
     public synchronized void put(String key, String val) {

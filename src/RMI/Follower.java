@@ -24,7 +24,7 @@ public class Follower implements RMIinterface {
     static volatile boolean isLeaderAlive = false;
     static int currentLeader;
     //ID //TODO 
-    static int id;
+    static int id=-1;
     //critical flag
     static volatile RAFT state=RAFT.FOLLOWER;
     
@@ -45,6 +45,9 @@ public class Follower implements RMIinterface {
             result.set(1, false);
             return result;
         }
+        else{
+            checkTerm(term);
+        }
         /**
          * 2. If votedFor is null or candidateId, and candidate’s log is at
          * least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
@@ -56,6 +59,7 @@ public class Follower implements RMIinterface {
         if ((votedFor == 0 || votedFor == candidateId)
                 && (log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true
                 || log.size() < lastLogIndex + 1)) {
+            votedFor=candidateId;
             result.set(1, true);
             return result;
         } else {
@@ -123,7 +127,7 @@ public class Follower implements RMIinterface {
             int lastNewEntry = prevLogIndex + entries.size();
             commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
         }//end
-
+        checkTerm(term);
         heartBeat(leaderId);
         return result;
     }
@@ -137,12 +141,28 @@ public class Follower implements RMIinterface {
         endElectionTimer();
         startElectionTimer();
     }
-
+    void commit()
+    {
+        //TODO
+        throw new UnsupportedOperationException("COMMIT Not supported yet.");
+    }
+    public void checkTerm(long term)
+    {
+         /**FOR All Servers
+         * If RPC request or response contains term T > currentTerm: 
+         * set currentTerm = T, convert to follower (§5.1)
+         */
+        if(this.currentTerm<term)
+        {
+            this.currentTerm=term;
+            state=RAFT.FOLLOWER;
+        }
+    }
     private void startElectionTimer() {
         int period;
         period = (int) (Math.random() * (interval[1] - interval[0]) + interval[0]);
         timer = new Timer(period);
-        timer.run();
+        timer.start();
     }
 
     private void endElectionTimer() {

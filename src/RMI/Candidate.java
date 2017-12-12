@@ -1,6 +1,8 @@
 package RMI;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -13,9 +15,9 @@ import raft.Protocol.RAFT;
 
 public class Candidate extends Follower {
 
-    static ArrayList<InetSocketAddress> mbpList;
-    static ArrayList<Boolean> votePool;
-    static ArrayList<Long> termPool;
+    static ArrayList<InetSocketAddress> mbpList= new ArrayList();
+    static ArrayList<Boolean> votePool= new ArrayList();
+    static ArrayList<Long> termPool= new ArrayList();
     static private Timer timer;
 
     public Candidate(ArrayList<InetSocketAddress> mbpList) {
@@ -30,17 +32,24 @@ public class Candidate extends Follower {
                 continue;
             }
             callRequestVote call = new callRequestVote(mbpList.get(i), i);
-            call.run();
+            call.start();
         }
     }
 
-    public void setMbpList(ArrayList<InetSocketAddress> mbpList) {
+    public final void setMbpList(ArrayList<InetSocketAddress> mbpList) {
         votePool.clear();
         this.mbpList.clear();
         termPool.clear();
 
         this.mbpList.addAll(mbpList);
         for (int i = 0; i < mbpList.size(); i++) {
+            try {
+                if(mbpList.get(i).getHostString().
+                        equals(InetAddress.getLocalHost()))
+                    setId(i);
+            } catch (UnknownHostException ex) {
+                Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
+            }
             votePool.add(false);
             termPool.add(currentTerm);
         }
@@ -50,7 +59,7 @@ public class Candidate extends Follower {
         int period;
         period = (int) (Math.random() * (interval[1] - interval[0]) + interval[0]);
         timer = new Timer(period);
-        timer.run();
+        timer.start();
     }
 
     private void endElectionTimer() {
@@ -108,6 +117,7 @@ public class Candidate extends Follower {
                 ArrayList result;
                 //TODO might exist problems here
                 result = stub.RequestVote(currentTerm, id, lastLogIndex, lastLogTerm);
+                checkTerm((long)result.get(0));
                 termPool.set(hostid, (long) result.get(0));
                 votePool.set(hostid, (boolean) result.get(1));
 
