@@ -1,4 +1,3 @@
-
 package TCP;
 
 import java.io.BufferedReader;
@@ -18,17 +17,17 @@ import raft.kvstore;
  *
  * @author hanxinlei
  */
-public class mbpServer {
+public class MbpServer {
 
-    private final kvstore store ;
+    private final kvstore store;
     private final int portNumber;
     private ServerSocket serverSocket;
-    private  boolean then_exit ;
+    private boolean then_exit;
 
-    public mbpServer(int portNumber) {
-        this.store= new kvstore();
+    public MbpServer(int portNumber) {
+        this.store = new kvstore();
         this.portNumber = portNumber;
-        this.then_exit= false;
+        this.then_exit = false;
     }
 
     public String exit() {

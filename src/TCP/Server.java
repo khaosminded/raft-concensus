@@ -17,7 +17,8 @@ import raft.kvstore;
 
 public class Server {
 
-    static public final kvstore store=new kvstore();;
+    static public final kvstore store = new kvstore();
+    ;
     private final String Addr;
     private final int portNumber;
     private final String mbpAddr;
@@ -29,7 +30,7 @@ public class Server {
     private boolean then_exit;
     //raft handler:: only for STATIC variables
     private Leader raftHandle;
-    
+
     public Server(int portNumber, String mbpAddr, int mbpPortNumber) throws UnknownHostException {
         this.Addr = InetAddress.getLocalHost().getHostAddress();
         this.portNumber = portNumber;
@@ -37,17 +38,18 @@ public class Server {
         this.mbpAddr = mbpAddr;
         this.mbpPortNumber = mbpPortNumber;
     }
-    public ArrayList<InetSocketAddress> initMbpList()
-    {
-        
+
+    public ArrayList<InetSocketAddress> initMbpList() {
+
         publish();
         refresh();
         return mbpList;
     }
-    public void setRaftHandle(Leader raftHandle)
-    {
-        this.raftHandle=raftHandle;
+
+    public void setRaftHandle(Leader raftHandle) {
+        this.raftHandle = raftHandle;
     }
+
     private String exit() {
         then_exit = true;
         return "<the server then exits>";
@@ -89,8 +91,8 @@ public class Server {
                 opt, Protocol.TYPE.RKVSTORE);
         client.runClient(key, val);
     }
-    public static ArrayList<InetSocketAddress> getMbpList()
-    {
+
+    public static ArrayList<InetSocketAddress> getMbpList() {
         //return (ArrayList<InetSocketAddress>) mbpList.clone();
         return mbpList;
     }
@@ -147,7 +149,7 @@ public class Server {
         }
 
         public void run() {
- 
+
             try (
                     PrintWriter out
                     = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -158,13 +160,12 @@ public class Server {
                 if (opt.equals(PUT.name())) {
                     String key = in.readLine();
                     String val = in.readLine();
-                    if(raftHandle.getId()==raftHandle.getLeaderId())
-                    {
-                        Entry e=new Entry(PUT,key,val,raftHandle.getTerm());
+                    if (raftHandle.getId() == raftHandle.getLeaderId()) {
+                        Entry e = new Entry(PUT, key, val, raftHandle.getTerm());
                         raftHandle.log.add(e);
-                    }
-                    else
+                    } else {
                         forward2Another(PUT, key, val, raftHandle.getLeaderId());
+                    }
                     response = "put key=" + key + "\n";
                 } else if (opt.equals(GET.name())) {
                     String key = in.readLine();
@@ -176,14 +177,13 @@ public class Server {
                     }
                 } else if (opt.equals(DEL.name())) {
                     String key = in.readLine();
-                    String val =null;
-                    if(raftHandle.getId()==raftHandle.getLeaderId())
-                    {
-                        Entry e=new Entry(DEL,key,val,raftHandle.getTerm());
+                    String val = null;
+                    if (raftHandle.getId() == raftHandle.getLeaderId()) {
+                        Entry e = new Entry(DEL, key, val, raftHandle.getTerm());
                         raftHandle.log.add(e);
-                    }
-                    else
+                    } else {
                         forward2Another(DEL, key, val, raftHandle.getLeaderId());
+                    }
                     response = "delete key=" + key + "\n";
                 } else if (opt.equals(STORE.name())) {
                     response = store.list();

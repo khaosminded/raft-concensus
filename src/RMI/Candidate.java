@@ -151,8 +151,8 @@ public class Candidate extends Follower {
              * Vote for self Reset election timer Send RequestVote RPCs to all
              * other servers
              */
-            checkTerm(currentTerm+1);
-            votedFor=id;
+            checkTerm(currentTerm + 1);
+            votedFor = id;
             votePool.set(id, true);
             startElectionTimer();
             broadCast();

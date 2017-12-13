@@ -27,9 +27,9 @@ public class Client {
         try {
             this.type = type;
             this.clientSocket = new Socket(addr, port);
-            
+
             clientSocket.setSoTimeout(1000);
-            
+
             this.out = new PrintWriter(clientSocket.getOutputStream(), true);
             this.in = new BufferedReader(
                     new InputStreamReader(

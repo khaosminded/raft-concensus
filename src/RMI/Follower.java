@@ -20,9 +20,9 @@ public class Follower implements RMIinterface {
     static public Log log = new Log();
     //Volatile state on all servers: 
     /**
-     * @note::assumed to be '0' based index::match with ArrayList index
-     * changed <initialized to 0> to <initialized to -1> :: match the meaning of 'last'
-    */
+     * @note::assumed to be '0' based index::match with ArrayList index changed
+     * <initialized to 0> to <initialized to -1> :: match the meaning of 'last'
+     */
     static int commitIndex = -1;
     static int lastApplied = -1;
     //flags to ensure leader is alive
@@ -31,11 +31,11 @@ public class Follower implements RMIinterface {
     static volatile boolean isLeaderAlive = false;
     static int currentLeader;
     //ID  '0'based
-    static int id=-1;
+    static int id = -1;
     //critical flags
-    static public volatile RAFT state=RAFT.FOLLOWER;
-    static private boolean isRunning=false;
-    
+    static public volatile RAFT state = RAFT.FOLLOWER;
+    static private boolean isRunning = false;
+
     public Follower() {
 
     }
@@ -52,8 +52,7 @@ public class Follower implements RMIinterface {
         if (this.currentTerm > term) {
             result.set(1, false);
             return result;
-        }
-        else{
+        } else {
             checkTerm(term);
         }
         /**
@@ -67,7 +66,7 @@ public class Follower implements RMIinterface {
         if ((votedFor == -1 || votedFor == candidateId)
                 && (log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true
                 || log.size() < lastLogIndex + 1)) {
-            votedFor=candidateId;
+            votedFor = candidateId;
             result.set(1, true);
             return result;
         } else {
@@ -90,8 +89,9 @@ public class Follower implements RMIinterface {
         //>for all server received RPC call
         checkTerm(term);
         //>for folower
-        if(state==RAFT.FOLLOWER)
+        if (state == RAFT.FOLLOWER) {
             heartBeat(leaderId);
+        }
         /**
          * 1. Reply false if term less than currentTerm (§5.1)
          */
@@ -143,23 +143,22 @@ public class Follower implements RMIinterface {
             int lastNewEntry = prevLogIndex + entries.size();
             commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
         }//end Append logic
-        
 
         return result;
     }
 
-    public int getId()
-    {
+    public int getId() {
         return id;
     }
-    public int getLeaderId()
-    {
+
+    public int getLeaderId() {
         return currentLeader;
     }
-    public long getTerm()
-    {
+
+    public long getTerm() {
         return currentTerm;
     }
+
     private void heartBeat(int leaderId) {
         isLeaderAlive = true;
         this.currentLeader = leaderId;
@@ -167,36 +166,37 @@ public class Follower implements RMIinterface {
         applyLog2Store();
         startElectionTimer();
     }
-    void applyLog2Store()
-    {
+
+    void applyLog2Store() {
         /**
-         * If commitIndex > lastApplied: increment lastApplied, 
-         * apply log[lastApplied] to state machine (§5.3)
+         * If commitIndex > lastApplied: increment lastApplied, apply
+         * log[lastApplied] to state machine (§5.3)
          */
-        while(commitIndex>lastApplied)
-        {
+        while (commitIndex > lastApplied) {
             lastApplied++;
-            Entry e=log.get(lastApplied);
-            if(e.getO()==PUT)
+            Entry e = log.get(lastApplied);
+            if (e.getO() == PUT) {
                 Server.store.put(e.getK(), e.getV());
-            if(e.getO()==DEL)
+            }
+            if (e.getO() == DEL) {
                 Server.store.del(e.getK());
+            }
         }
     }
-    public void checkTerm(long term)
-    {
-         /**FOR All Servers
-         * If RPC request or response contains term T > currentTerm: 
-         * set currentTerm = T, convert to follower (§5.1)
+
+    public void checkTerm(long term) {
+        /**
+         * FOR All Servers If RPC request or response contains term T >
+         * currentTerm: set currentTerm = T, convert to follower (§5.1)
          */
-        if(this.currentTerm<term)
-        {
-            this.currentTerm=term;
+        if (this.currentTerm < term) {
+            this.currentTerm = term;
             //CRITICAL reset votedFor, everytime term changes;
-            votedFor=-1;
-            state=RAFT.FOLLOWER;
+            votedFor = -1;
+            state = RAFT.FOLLOWER;
         }
     }
+
     private void startElectionTimer() {
         int period;
         period = (int) (Math.random() * (interval[1] - interval[0]) + interval[0]);
@@ -236,16 +236,17 @@ public class Follower implements RMIinterface {
             isLeaderAlive = false;
             //TODO
             System.out.println("followe->candidate");
-            state=RAFT.CANDIDATE;
-            isRunning=false;
+            state = RAFT.CANDIDATE;
+            isRunning = false;
         }
 
     }
-    RAFT getState()
-    {
+
+    RAFT getState() {
         return state;
     }
-    public void initRMI(){
+
+    public void initRMI() {
         //init, uncongested
         try {
             String name = "raftFollower";
@@ -258,18 +259,18 @@ public class Follower implements RMIinterface {
             e.printStackTrace();
         }
     }
+
     public void run() {
         //elaborate congested;
-        isRunning=true;
+        isRunning = true;
         startElectionTimer();
-        while(isRunning)
-        {
+        while (isRunning) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ex) {
                 Logger.getLogger(Follower.class.getName()).log(Level.SEVERE, null, ex);
             }
-        } 
-        
+        }
+
     }
 }

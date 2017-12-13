@@ -1,8 +1,5 @@
 package raft;
 
-
-
-
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,8 +20,9 @@ public class kvstore {
     }
 
     public synchronized void del(String key) {
-        if(map.get(key)!=null)
+        if (map.get(key) != null) {
             map.remove(key);
+        }
     }
 
     public String list() {
