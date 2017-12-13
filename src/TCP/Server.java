@@ -27,7 +27,7 @@ public class Server {
     private volatile static ArrayList<InetSocketAddress> mbpList;
 
     private boolean then_exit;
-    //raft handler
+    //raft handler:: only for STATIC variables
     private Leader raftHandle;
     
     public Server(int portNumber, String mbpAddr, int mbpPortNumber) throws UnknownHostException {

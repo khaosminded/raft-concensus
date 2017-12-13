@@ -25,14 +25,14 @@ public class Follower implements RMIinterface {
     */
     static int commitIndex = -1;
     static int lastApplied = -1;
-    //flags to ensure leader alive
+    //flags to ensure leader is alive
     static private Timer timer;
     static int[] interval = {500, 1000};
     static volatile boolean isLeaderAlive = false;
     static int currentLeader;
-    //ID  
+    //ID  '0'based
     static int id=-1;
-    //critical flag
+    //critical flags
     static public volatile RAFT state=RAFT.FOLLOWER;
     static private boolean isRunning=false;
     
@@ -47,7 +47,7 @@ public class Follower implements RMIinterface {
         result.add(this.currentTerm > term ? this.currentTerm : term);
         result.add(true);
         /**
-         * 1. Reply false if term < currentTerm (§5.1)
+         * 1. Reply false if term less than currentTerm (§5.1)
          */
         if (this.currentTerm > term) {
             result.set(1, false);
@@ -64,7 +64,7 @@ public class Follower implements RMIinterface {
          * log entry  * --- OR ---  * When term of last log entries match, log
          * with more entries
          */
-        if ((votedFor == 0 || votedFor == candidateId)
+        if ((votedFor == -1 || votedFor == candidateId)
                 && (log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true
                 || log.size() < lastLogIndex + 1)) {
             votedFor=candidateId;
@@ -85,7 +85,15 @@ public class Follower implements RMIinterface {
         result.add(this.currentTerm > term ? this.currentTerm : term);
         result.add(true);
         /**
-         * 1. Reply false if term < currentTerm (§5.1)
+         * Server rules.
+         */
+        //>for all server received RPC call
+        checkTerm(term);
+        //>for folower
+        if(state==RAFT.FOLLOWER)
+            heartBeat(leaderId);
+        /**
+         * 1. Reply false if term less than currentTerm (§5.1)
          */
         if (this.currentTerm > term) {
             result.set(1, false);
@@ -136,12 +144,7 @@ public class Follower implements RMIinterface {
             commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
         }//end Append logic
         
-        //Server routines
-        //>for all server
-        checkTerm(term);
-        //>for folower
-        if(state==RAFT.FOLLOWER)
-            heartBeat(leaderId);
+
         return result;
     }
 
@@ -189,6 +192,8 @@ public class Follower implements RMIinterface {
         if(this.currentTerm<term)
         {
             this.currentTerm=term;
+            //CRITICAL reset votedFor, everytime term changes;
+            votedFor=-1;
             state=RAFT.FOLLOWER;
         }
     }

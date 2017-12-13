@@ -1,5 +1,6 @@
 package RMI;
 
+import static RMI.Follower.log;
 import java.net.InetSocketAddress;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -8,6 +9,7 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import raft.Entry;
 import raft.Protocol.RAFT;
 
 public class Leader extends Candidate {
@@ -20,11 +22,12 @@ public class Leader extends Candidate {
      * @matchIndex for each server, index of highest log entry known to be
      * replicated on server (initialized to 0, increases monotonically)
      */
-    ArrayList nextIndex;
-    ArrayList matchIndex;
+    ArrayList<Integer> nextIndex;
+    ArrayList<Integer> matchIndex;
     //set timer
     static private Timer timer;
-    static final private int heartBeatDelay = 200;
+    static final private int heartBeatInterval = 200;
+    static final private int sendLimit = 20;
 
     public Leader(ArrayList<InetSocketAddress> mbpList) {
         super(mbpList);
@@ -41,13 +44,13 @@ public class Leader extends Candidate {
             call.start();
         }
     }
-    private void startHeartTimer()
-    {
-        timer=new Timer(heartBeatDelay);
+
+    private void startHeartTimer() {
+        timer = new Timer(heartBeatInterval);
         timer.start();
     }
-    private void endHeartTimer()
-    {
+
+    private void endHeartTimer() {
         timer.interrupt();
         try {
             timer.join();
@@ -55,6 +58,7 @@ public class Leader extends Candidate {
             Logger.getLogger(Leader.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
     private class Timer extends Thread {
 
         int sleeptime;
@@ -72,7 +76,6 @@ public class Leader extends Candidate {
                 Logger.getLogger(Leader.class.getName()).log(Level.SEVERE, null, ex);
                 return;
             }
-            broadCast();
         }
     }
 
@@ -91,9 +94,67 @@ public class Leader extends Candidate {
             try {
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
-                //TODO deal with AppendEntries
-                //stub.AppendEntries(currentTerm, hostid, commitIndex, currentTerm, nextIndex, MIN_PRIORITY)
-                 
+                /**
+                 * will be a heavy function. send initial empty AppendEntries
+                 * RPCs (heartbeat) to each server
+                 */
+                ArrayList<Entry> entries = new ArrayList<>();
+                ArrayList result;
+                int prevLogIndex = nextIndex.get(hostid) - 1;
+                long prevLogTerm = log.get(prevLogIndex).getT();
+                /**
+                 * If last log index ≥ nextIndex for a follower: send
+                 * AppendEntries RPC with log entries starting at nextIndex
+                 */
+                int maxSend = sendLimit;
+                int next = nextIndex.get(hostid);
+                for (; next < log.size() && maxSend > 0; next++, maxSend--) {
+                    entries.add(log.get(next));
+                }
+                result = stub.AppendEntries(currentTerm, id, prevLogIndex,
+                        prevLogTerm, entries, commitIndex);
+
+                /**
+                 * If successful: update nextIndex and matchIndex for follower
+                 *
+                 * @matchIndex: increases monotonically <???>
+                 */
+                if ((boolean) result.get(1)) {
+                    nextIndex.set(hostid, next);
+                    matchIndex.set(hostid, next - 1);
+//                        matchIndex.set(hostid, i>matchIndex.get(hostid)?
+//                                i:matchIndex.get(hostid));
+                }
+                /**
+                 * If AppendEntries fails because of log inconsistency:
+                 * decrement nextIndex and retry (§5.3)
+                 */
+                if ((boolean) result.get(1)) {
+                    nextIndex.set(hostid, nextIndex.get(hostid) - 1);
+                }
+
+                /**
+                 * If there exists an N such that N > commitIndex, a majority of
+                 * matchIndex[i] ≥ N, and log[N].term == currentTerm: set
+                 * commitIndex = N (§5.3, §5.4)
+                 */
+                //take care of leader itself
+                //worst O(log.size * (mbpList.size-1))
+                for (int N = commitIndex + 1; N < log.size(); N++) {
+                    int majority = matchIndex.size() / 2;
+                    int count = 0;
+                    for (int i = 0; i < matchIndex.size(); i++) {
+                        if (matchIndex.get(i) >= N) {
+                            count++;
+                        }
+                    }
+                    //don't know why algorithm author said check currentTerm
+                    if (count >= majority && log.get(N).getT() == currentTerm) {
+                        commitIndex = N;//MAX(such N)
+                    }
+                }
+                checkTerm((Long) result.get(0));
+
             } catch (RemoteException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             } catch (NotBoundException ex) {
@@ -101,20 +162,25 @@ public class Leader extends Candidate {
             }
         }
     }
-    private void initIndexes()
-    {
-        nextIndex[];
-        matchIndex[];
+
+    private void initIndexes() {
+        nextIndex.clear();
+        matchIndex.clear();
+        for (int i = 0; i < mbpList.size(); i++) {
+            nextIndex.add(log.size());
+            matchIndex.add(-1);
+        }
+
     }
+
     public void run() {
+        initIndexes();
         while (getState() == RAFT.LEADER) {
             startHeartTimer();
-            
-            //recieve Operation opt
-            log.add(opt);
-            respond(commit(){/**respond**/});
-            
-            
+
+            broadCast();
+            applyLog2Store();
+
             try {
                 timer.join();
             } catch (InterruptedException ex) {

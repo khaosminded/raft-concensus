@@ -23,7 +23,7 @@ public class GenericNode {
      */
     void main(String [] args) throws UnknownHostException, IOException
     {
-        TODO
+        
         //@2. TcpServer with RaftService
         Server server=new Server(8080, "localhost", 4410); 
         Leader raftHandle=new RaftService(server.initMbpList()).runRaftService();

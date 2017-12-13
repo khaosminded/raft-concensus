@@ -46,6 +46,7 @@ public class Candidate extends Follower {
             try {
                 if (mbpList.get(i).getHostString().
                         equals(InetAddress.getLocalHost())) {
+                    //id is '0'based;
                     id = i;
                 }
             } catch (UnknownHostException ex) {
@@ -130,7 +131,7 @@ public class Candidate extends Follower {
         }
     }
 
-    boolean isMajority(ArrayList<Boolean> array) {
+    private boolean isMajority(ArrayList<Boolean> array) {
         int N = array.size();
         int majorty = N / 2 + 1;
         int count = 0;
@@ -150,7 +151,8 @@ public class Candidate extends Follower {
              * Vote for self Reset election timer Send RequestVote RPCs to all
              * other servers
              */
-            currentTerm++;
+            checkTerm(currentTerm+1);
+            votedFor=id;
             votePool.set(id, true);
             startElectionTimer();
             broadCast();
@@ -180,7 +182,7 @@ public class Candidate extends Follower {
             if (isMajority(votePool)) {
                 state = RAFT.LEADER;
                 currentLeader = id;
-                endElectionTimer();
+                //endElectionTimer();
                 return;
             }
         }
