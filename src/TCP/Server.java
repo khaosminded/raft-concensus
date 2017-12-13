@@ -1,10 +1,12 @@
 package TCP;
 
+import RMI.Leader;
 import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import raft.Entry;
 import raft.Protocol;
 import static raft.Protocol.Operation.DEL;
 import static raft.Protocol.Operation.EXIT;
@@ -15,7 +17,7 @@ import raft.kvstore;
 
 public class Server {
 
-    private final kvstore store;
+    static public final kvstore store=new kvstore();;
     private final String Addr;
     private final int portNumber;
     private final String mbpAddr;
@@ -25,16 +27,27 @@ public class Server {
     private volatile static ArrayList<InetSocketAddress> mbpList;
 
     private boolean then_exit;
-
+    //raft handler
+    private Leader raftHandle;
+    
     public Server(int portNumber, String mbpAddr, int mbpPortNumber) throws UnknownHostException {
         this.Addr = InetAddress.getLocalHost().getHostAddress();
         this.portNumber = portNumber;
         mbpList = new ArrayList<>();
-        this.store = new kvstore();
         this.mbpAddr = mbpAddr;
         this.mbpPortNumber = mbpPortNumber;
     }
-
+    public ArrayList<InetSocketAddress> initMbpList()
+    {
+        
+        publish();
+        refresh();
+        return mbpList;
+    }
+    public void setRaftHandle(Leader raftHandle)
+    {
+        this.raftHandle=raftHandle;
+    }
     private String exit() {
         then_exit = true;
         return "<the server then exits>";
@@ -68,7 +81,7 @@ public class Server {
         }
     }
 
-    public static void forward2Leader(Protocol.Operation opt, String key, String val, int id) {
+    public static void forward2Another(Protocol.Operation opt, String key, String val, int id) {
 
         String addr = mbpList.get(id).getHostString();
         int port = mbpList.get(id).getPort();
@@ -83,7 +96,11 @@ public class Server {
     }
 
     public void runServer() throws IOException {
-
+        if (raftHandle == null) {
+            System.out.println("TCP.Server.ServerThread.run():"
+                    + "raftHandle didn't init<runserver failed>");
+            return;
+        }
         System.out.println("TCP kvstore server... trying to listen port: " + portNumber);
         class Monitor extends Thread {
 
@@ -94,6 +111,7 @@ public class Server {
                         System.exit(1);
                     }
                     refresh();
+                    raftHandle.setMbpList(mbpList);
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException ex) {
@@ -129,6 +147,7 @@ public class Server {
         }
 
         public void run() {
+ 
             try (
                     PrintWriter out
                     = new PrintWriter(clientSocket.getOutputStream(), true);
@@ -139,7 +158,13 @@ public class Server {
                 if (opt.equals(PUT.name())) {
                     String key = in.readLine();
                     String val = in.readLine();
-                    store.put(key, val);
+                    if(raftHandle.getId()==raftHandle.getLeaderId())
+                    {
+                        Entry e=new Entry(PUT,key,val,raftHandle.getTerm());
+                        raftHandle.log.add(e);
+                    }
+                    else
+                        forward2Another(PUT, key, val, raftHandle.getLeaderId());
                     response = "put key=" + key + "\n";
                 } else if (opt.equals(GET.name())) {
                     String key = in.readLine();
@@ -151,7 +176,14 @@ public class Server {
                     }
                 } else if (opt.equals(DEL.name())) {
                     String key = in.readLine();
-                    store.del(key);
+                    String val =null;
+                    if(raftHandle.getId()==raftHandle.getLeaderId())
+                    {
+                        Entry e=new Entry(DEL,key,val,raftHandle.getTerm());
+                        raftHandle.log.add(e);
+                    }
+                    else
+                        forward2Another(DEL, key, val, raftHandle.getLeaderId());
                     response = "delete key=" + key + "\n";
                 } else if (opt.equals(STORE.name())) {
                     response = store.list();

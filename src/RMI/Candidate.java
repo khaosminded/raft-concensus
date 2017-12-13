@@ -10,14 +10,13 @@ import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import raft.Protocol;
 import raft.Protocol.RAFT;
 
 public class Candidate extends Follower {
 
-    static ArrayList<InetSocketAddress> mbpList= new ArrayList();
-    static ArrayList<Boolean> votePool= new ArrayList();
-    static ArrayList<Long> termPool= new ArrayList();
+    static volatile ArrayList<InetSocketAddress> mbpList = new ArrayList();
+    static ArrayList<Boolean> votePool = new ArrayList();
+    static ArrayList<Long> termPool = new ArrayList();
     static private Timer timer;
 
     public Candidate(ArrayList<InetSocketAddress> mbpList) {
@@ -36,7 +35,8 @@ public class Candidate extends Follower {
         }
     }
 
-    public final void setMbpList(ArrayList<InetSocketAddress> mbpList) {
+    //the only entrance of member list
+    public final synchronized void setMbpList(ArrayList<InetSocketAddress> mbpList) {
         votePool.clear();
         this.mbpList.clear();
         termPool.clear();
@@ -44,9 +44,10 @@ public class Candidate extends Follower {
         this.mbpList.addAll(mbpList);
         for (int i = 0; i < mbpList.size(); i++) {
             try {
-                if(mbpList.get(i).getHostString().
-                        equals(InetAddress.getLocalHost()))
-                    setId(i);
+                if (mbpList.get(i).getHostString().
+                        equals(InetAddress.getLocalHost())) {
+                    id = i;
+                }
             } catch (UnknownHostException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -117,7 +118,7 @@ public class Candidate extends Follower {
                 ArrayList result;
                 //TODO might exist problems here
                 result = stub.RequestVote(currentTerm, id, lastLogIndex, lastLogTerm);
-                checkTerm((long)result.get(0));
+                checkTerm((long) result.get(0));
                 termPool.set(hostid, (long) result.get(0));
                 votePool.set(hostid, (boolean) result.get(1));
 
@@ -128,17 +129,20 @@ public class Candidate extends Follower {
             }
         }
     }
-    boolean isMajority(ArrayList<Boolean> array)
-    {
-        int N=array.size();
-        int majorty=N/2+1;
-        int count=0;
-        for(int i=0;i<array.size();i++)
-            if(array.get(i))
+
+    boolean isMajority(ArrayList<Boolean> array) {
+        int N = array.size();
+        int majorty = N / 2 + 1;
+        int count = 0;
+        for (int i = 0; i < array.size(); i++) {
+            if (array.get(i)) {
                 count++;
-        return majorty<=count;
+            }
+        }
+        return majorty <= count;
     }
-    public void runCandidate() {
+
+    public void run() {
         //congestion method
         while (!isLeaderAlive) {
             /**
@@ -152,31 +156,32 @@ public class Candidate extends Follower {
             broadCast();
 
             /**
-             * votes received from majority of servers: become leader
-             */
-            if(isMajority(votePool))
-            {
-                state=RAFT.LEADER;
-                currentLeader=id;
-                endElectionTimer();
-                return;
-            }
-            /**
              * If AppendEntries RPC received from new leader: convert to
              * follower
              */
-            if(isLeaderAlive)    
-            {
-                state=RAFT.FOLLOWER;
+            if (isLeaderAlive) {
+                state = RAFT.FOLLOWER;
                 endElectionTimer();
-                return;                
+                return;
             }
+
             /**
              * If election timeout elapses: start new election
              */
-            try {    timer.join();
+            try {
+                timer.join();
             } catch (InterruptedException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            /**
+             * votes received from majority of servers: become leader
+             */
+            if (isMajority(votePool)) {
+                state = RAFT.LEADER;
+                currentLeader = id;
+                endElectionTimer();
+                return;
             }
         }
     }

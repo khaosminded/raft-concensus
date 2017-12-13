@@ -101,8 +101,12 @@ public class Leader extends Candidate {
             }
         }
     }
-
-    public void runLeader() {
+    private void initIndexes()
+    {
+        nextIndex[];
+        matchIndex[];
+    }
+    public void run() {
         while (getState() == RAFT.LEADER) {
             startHeartTimer();
             

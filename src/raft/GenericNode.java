@@ -5,6 +5,11 @@
  */
 package raft;
 
+import RMI.Leader;
+import TCP.Server;
+import java.io.IOException;
+import java.net.UnknownHostException;
+
 /**
  *
  * @author hanxinlei
@@ -16,8 +21,13 @@ public class GenericNode {
      * @2. TcpServer with RaftService
      * @3. Client
      */
-    void main(String [] args)
+    void main(String [] args) throws UnknownHostException, IOException
     {
         TODO
+        //@2. TcpServer with RaftService
+        Server server=new Server(8080, "localhost", 4410); 
+        Leader raftHandle=new RaftService(server.initMbpList()).runRaftService();
+        server.setRaftHandle(raftHandle);
+        server.runServer();
     }
 }

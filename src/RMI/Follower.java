@@ -1,5 +1,6 @@
 package RMI;
 
+import TCP.Server;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
@@ -7,6 +8,8 @@ import java.util.ArrayList;
 import raft.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static raft.Protocol.Operation.DEL;
+import static raft.Protocol.Operation.PUT;
 import raft.Protocol.RAFT;
 
 public class Follower implements RMIinterface {
@@ -14,19 +17,24 @@ public class Follower implements RMIinterface {
     //Persistent state on all servers:
     static long currentTerm;
     static int votedFor;
-    static Log log = new Log();
-    //Volatile state on all servers:
-    static int commitIndex = 0;
-    static int lastApplied = 0;
+    static public Log log = new Log();
+    //Volatile state on all servers: 
+    /**
+     * @note::assumed to be '0' based index::match with ArrayList index
+     * changed <initialized to 0> to <initialized to -1> :: match the meaning of 'last'
+    */
+    static int commitIndex = -1;
+    static int lastApplied = -1;
     //flags to ensure leader alive
     static private Timer timer;
     static int[] interval = {500, 1000};
     static volatile boolean isLeaderAlive = false;
     static int currentLeader;
-    //ID //TODO 
+    //ID  
     static int id=-1;
     //critical flag
-    static volatile RAFT state=RAFT.FOLLOWER;
+    static public volatile RAFT state=RAFT.FOLLOWER;
+    static private boolean isRunning=false;
     
     public Follower() {
 
@@ -126,25 +134,51 @@ public class Follower implements RMIinterface {
         if (leaderCommit > commitIndex) {
             int lastNewEntry = prevLogIndex + entries.size();
             commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
-        }//end
+        }//end Append logic
+        
+        //Server routines
+        //>for all server
         checkTerm(term);
-        heartBeat(leaderId);
+        //>for folower
+        if(state==RAFT.FOLLOWER)
+            heartBeat(leaderId);
         return result;
     }
-    public void setId(int id)
+
+    public int getId()
     {
-        this.id=id;
+        return id;
+    }
+    public int getLeaderId()
+    {
+        return currentLeader;
+    }
+    public long getTerm()
+    {
+        return currentTerm;
     }
     private void heartBeat(int leaderId) {
         isLeaderAlive = true;
         this.currentLeader = leaderId;
         endElectionTimer();
+        applyLog2Store();
         startElectionTimer();
     }
-    void commit()
+    void applyLog2Store()
     {
-        //TODO
-        throw new UnsupportedOperationException("COMMIT Not supported yet.");
+        /**
+         * If commitIndex > lastApplied: increment lastApplied, 
+         * apply log[lastApplied] to state machine (§5.3)
+         */
+        while(commitIndex>lastApplied)
+        {
+            lastApplied++;
+            Entry e=log.get(lastApplied);
+            if(e.getO()==PUT)
+                Server.store.put(e.getK(), e.getV());
+            if(e.getO()==DEL)
+                Server.store.del(e.getK());
+        }
     }
     public void checkTerm(long term)
     {
@@ -198,6 +232,7 @@ public class Follower implements RMIinterface {
             //TODO
             System.out.println("followe->candidate");
             state=RAFT.CANDIDATE;
+            isRunning=false;
         }
 
     }
@@ -205,11 +240,9 @@ public class Follower implements RMIinterface {
     {
         return state;
     }
-   
-    public void runFollower() {
+    public void initRMI(){
         //init, uncongested
         try {
-            //TODO ensure there is no side effect for not unbinding
             String name = "raftFollower";
             RMIinterface stub = (RMIinterface) UnicastRemoteObject.exportObject(new Follower(), 0);
             Registry registry = LocateRegistry.getRegistry();
@@ -219,7 +252,19 @@ public class Follower implements RMIinterface {
             System.err.println("RMIServer exception: " + e.toString());
             e.printStackTrace();
         }
+    }
+    public void run() {
+        //elaborate congested;
+        isRunning=true;
         startElectionTimer();
-
+        while(isRunning)
+        {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Follower.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        } 
+        
     }
 }

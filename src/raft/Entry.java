@@ -23,6 +23,12 @@ public class Entry {
         value=null;
         term=-1;
     }
+    public Entry(Operation opt,String key,String value,long term) {
+        this.opt=opt;
+        this.key=key;
+        this.value=value;
+        this.term=term;
+    }
     public Operation getO()
     {
         return opt;
