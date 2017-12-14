@@ -1,5 +1,6 @@
 package TCP;
 
+import RMI.Follower;
 import RMI.Leader;
 import java.io.*;
 import java.net.*;
@@ -30,6 +31,8 @@ public class Server {
     private boolean then_exit;
     //raft handler:: only for STATIC variables
     private Leader raftHandle;
+    
+    static final int monitorDelay=2000;
 
     public Server(int portNumber, String mbpAddr, int mbpPortNumber) throws UnknownHostException {
         this.Addr = InetAddress.getLocalHost().getHostAddress();
@@ -37,6 +40,7 @@ public class Server {
         mbpList = new ArrayList<>();
         this.mbpAddr = mbpAddr;
         this.mbpPortNumber = mbpPortNumber;
+        this.then_exit=false;
     }
 
     public ArrayList<InetSocketAddress> initMbpList() {
@@ -113,9 +117,10 @@ public class Server {
                         System.exit(1);
                     }
                     refresh();
+                    System.out.println("I'm a "+Follower.state.name()+"!");
                     raftHandle.setMbpList(mbpList);
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(monitorDelay);
                     } catch (InterruptedException ex) {
                         Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -193,7 +198,7 @@ public class Server {
                     System.out.println("Wrong command received!");
                 }
                 System.out.println("TO " + clientSocket.getInetAddress() + ":" + response);
-                out.print(response);
+                out.println(response);
 
             } catch (IOException e) {
                 System.out.println("Exception caught when listening for a connection");

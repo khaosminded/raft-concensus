@@ -109,7 +109,7 @@ public class MbpServer {
                     System.out.println("Wrong command received!");
                 }
                 System.out.println("TO " + clientSocket.getInetAddress() + ":" + response);
-                out.print(response);
+                out.println(response);
 
             } catch (IOException e) {
                 System.out.println("Exception caught when listening for a connection");

@@ -10,7 +10,7 @@ public class Log {
 
     public Log() {
         this.entries = new ArrayList<Entry>();
-        System.out.println("log init..");
+        System.out.println("RAFT log init..");
     }
 
     public void Log(Log l) {

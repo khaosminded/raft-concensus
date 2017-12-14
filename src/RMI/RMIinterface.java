@@ -17,7 +17,7 @@ public interface RMIinterface extends Remote {
      * @term::long currentTerm for candidate to update itself
      * @voteGranted::boolean true means candidate grant vote
      */
-    ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm);
+    ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm)throws RemoteException;
 
     /**
      * return ArraryList:
@@ -27,6 +27,6 @@ public interface RMIinterface extends Remote {
      * and prevLogterm
      */
     ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
-            ArrayList<Entry> entries, int leaderCommit);
+            ArrayList<Entry> entries, int leaderCommit)throws RemoteException;
 
 }

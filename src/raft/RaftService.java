@@ -34,6 +34,7 @@ public class RaftService {
         public void run() {
             //Implement Follower->Candidate->Leader finite state machine here;
             //all runXxxx() function are design to be congested
+            System.out.println("RAFT service is running...");
             Leader leader = raftHandle;
             Candidate candidate = raftHandle;
             Follower follower = raftHandle;
@@ -44,9 +45,11 @@ public class RaftService {
                     follower.run();
                 }
                 if (raftHandle.state == RAFT.CANDIDATE) {
+
                     candidate.run();
                 }
                 if (raftHandle.state == RAFT.LEADER) {
+
                     leader.run();
                 }
             }

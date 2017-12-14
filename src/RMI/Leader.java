@@ -92,6 +92,7 @@ public class Leader extends Candidate {
         @Override
         public void run() {
             try {
+                System.out.println("RMI.Leader.callAppendEntries.run()");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 /**

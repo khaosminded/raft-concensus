@@ -21,14 +21,14 @@ public class Client {
     private Protocol.Operation opt;
     private String serverResp;
     private Protocol.TYPE type;
-
+    private final int clientTimeOut=3000;
     public Client(String addr, int port, Protocol.Operation opt, Protocol.TYPE type) {
         super();
         try {
             this.type = type;
             this.clientSocket = new Socket(addr, port);
 
-            clientSocket.setSoTimeout(1000);
+            clientSocket.setSoTimeout(clientTimeOut);
 
             this.out = new PrintWriter(clientSocket.getOutputStream(), true);
             this.in = new BufferedReader(

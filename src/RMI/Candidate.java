@@ -112,6 +112,7 @@ public class Candidate extends Follower {
         @Override
         public void run() {
             try {
+                System.out.println("RMI.Candidate.callRequestVote.run()");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 int lastLogIndex = log.size() > 0 ? log.size() - 1 : 0;
@@ -123,9 +124,7 @@ public class Candidate extends Follower {
                 termPool.set(hostid, (long) result.get(0));
                 votePool.set(hostid, (boolean) result.get(1));
 
-            } catch (RemoteException ex) {
-                Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (NotBoundException ex) {
+            } catch (RemoteException | NotBoundException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
@@ -140,6 +139,7 @@ public class Candidate extends Follower {
                 count++;
             }
         }
+        System.err.println(">CANDIDATE GET VOTE:"+count+"\n");
         return majorty <= count;
     }
 

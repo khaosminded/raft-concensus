@@ -16,7 +16,7 @@ public class Follower implements RMIinterface {
 
     //Persistent state on all servers:
     static long currentTerm;
-    static int votedFor;
+    static int votedFor=-1;
     static public Log log = new Log();
     //Volatile state on all servers: 
     /**
@@ -42,6 +42,7 @@ public class Follower implements RMIinterface {
 
     @Override
     public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm) {
+        System.out.println("RMI.Follower.RequestVote()");
         //init result {term,voteGranted}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -64,8 +65,8 @@ public class Follower implements RMIinterface {
          * with more entries
          */
         if ((votedFor == -1 || votedFor == candidateId)
-                && (log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true
-                || log.size() < lastLogIndex + 1)) {
+                && ((log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true)
+                || (log.size() <= lastLogIndex + 1 &&  (log.get(log.size()-1).getT()==lastLogTerm) ))) {
             votedFor = candidateId;
             result.set(1, true);
             return result;
@@ -79,6 +80,7 @@ public class Follower implements RMIinterface {
     @Override
     public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
             ArrayList<Entry> entries, int leaderCommit) {
+        System.out.println("RMI.Follower.AppendEntries()");
         //init result {term,success}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -253,7 +255,7 @@ public class Follower implements RMIinterface {
             RMIinterface stub = (RMIinterface) UnicastRemoteObject.exportObject(new Follower(), 0);
             Registry registry = LocateRegistry.getRegistry();
             registry.bind(name, stub);
-            System.out.println("Follower is ready..");
+            System.out.println("RMI service is ready..");
         } catch (Exception e) {
             System.err.println("RMIServer exception: " + e.toString());
             e.printStackTrace();
