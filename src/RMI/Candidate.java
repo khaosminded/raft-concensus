@@ -18,6 +18,7 @@ public class Candidate extends Follower {
     static ArrayList<Boolean> votePool = new ArrayList();
     static ArrayList<Long> termPool = new ArrayList();
     static private Timer timer;
+    static private int[] interval={200,300};
 
     public Candidate(ArrayList<InetSocketAddress> mbpList) {
         super();
@@ -38,7 +39,7 @@ public class Candidate extends Follower {
 
     //the only entrance of member list
     public final synchronized void setMbpList(ArrayList<InetSocketAddress> mbpList) {
-        System.out.println("RMI.Candidate.setMbpList(): id refresh..list refresh...");
+        System.err.println("RMI.Candidate.setMbpList(): id refresh..list refresh...");
         votePool.clear();
         this.mbpList.clear();
         termPool.clear();
@@ -169,6 +170,7 @@ public class Candidate extends Follower {
                 endElectionTimer();
                 return;
             }
+            
 
             /**
              * If election timeout elapses: start new election
@@ -178,7 +180,7 @@ public class Candidate extends Follower {
             } catch (InterruptedException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             }
-
+            
             /**
              * votes received from majority of servers: become leader
              */
@@ -189,6 +191,7 @@ public class Candidate extends Follower {
                 //endElectionTimer();
                 return;
             }
+
         }
     }
 }

@@ -45,7 +45,7 @@ public class GenericNode {
     public static void main(String[] args) throws UnknownHostException, IOException {
         
         
-        System.err.close();
+        //System.err.close();
                 
         if (args.length < 1) {
             System.out.println("=Wrong command!=\n"

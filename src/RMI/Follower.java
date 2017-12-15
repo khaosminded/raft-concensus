@@ -27,7 +27,7 @@ public class Follower implements RMIinterface {
     static int lastApplied = -1;
     //flags to ensure leader is alive
     static private Timer timer;
-    static int[] interval = {500, 1000};
+    static private int[] interval = {800, 1500};
     static volatile boolean isLeaderAlive = false;
     static int currentLeader = -1;
     //ID  '0'based
@@ -192,10 +192,11 @@ public class Follower implements RMIinterface {
          * FOR All Servers If RPC request or response contains term T >
          * currentTerm: set currentTerm = T, convert to follower (§5.1)
          */
-        if (this.currentTerm < term) {
-            this.currentTerm = term;
+        if (currentTerm < term) {
+            currentTerm = term;
             //CRITICAL reset votedFor, everytime term changes;
             votedFor = -1;
+            System.err.println("TERM:"+currentTerm+":::::LEADER:"+currentLeader);
             System.out.println("----->follower");
             state = RAFT.FOLLOWER;
         }

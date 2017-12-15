@@ -66,7 +66,7 @@ public class Client {
                     in.read(cbuf, 0, 1024 * 128);
                     String resp=String.valueOf(cbuf);
                     int end=resp.lastIndexOf(":");
-                    String cleanResp =resp.substring(0, end>0?end:0);
+                    String cleanResp =resp.substring(0, end+1);
                     this.serverResp = cleanResp;
                     break;
                 case PUT:
