@@ -35,22 +35,19 @@ public class RaftService {
             //Implement Follower->Candidate->Leader finite state machine here;
             //all runXxxx() function are design to be congested
             System.out.println("RAFT service is running...");
-            Leader leader = raftHandle;
-            Candidate candidate = raftHandle;
-            Follower follower = raftHandle;
 
             raftHandle.initRMI();
             while (true) {
                 if (raftHandle.state == RAFT.FOLLOWER) {
-                    follower.run();
+                    raftHandle.runFollower();
                 }
                 if (raftHandle.state == RAFT.CANDIDATE) {
 
-                    candidate.run();
+                    raftHandle.runCandidate();
                 }
                 if (raftHandle.state == RAFT.LEADER) {
 
-                    leader.run();
+                    raftHandle.runLeader();
                 }
             }
         }

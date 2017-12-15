@@ -37,6 +37,7 @@ public class Candidate extends Follower {
 
     //the only entrance of member list
     public final synchronized void setMbpList(ArrayList<InetSocketAddress> mbpList) {
+        System.out.println("RMI.Candidate.setMbpList(): id initialized");
         votePool.clear();
         this.mbpList.clear();
         termPool.clear();
@@ -45,7 +46,7 @@ public class Candidate extends Follower {
         for (int i = 0; i < mbpList.size(); i++) {
             try {
                 if (mbpList.get(i).getHostString().
-                        equals(InetAddress.getLocalHost())) {
+                        equals(InetAddress.getLocalHost().getHostAddress())) {
                     //id is '0'based;
                     id = i;
                 }
@@ -143,7 +144,8 @@ public class Candidate extends Follower {
         return majorty <= count;
     }
 
-    public void run() {
+    public void runCandidate() {
+        System.err.println("RMI.Candidate.run()");
         //congestion method
         while (!isLeaderAlive) {
             /**
@@ -151,7 +153,7 @@ public class Candidate extends Follower {
              * Vote for self Reset election timer Send RequestVote RPCs to all
              * other servers
              */
-            checkTerm(currentTerm + 1);
+            currentTerm++;
             votedFor = id;
             votePool.set(id, true);
             startElectionTimer();

@@ -101,8 +101,8 @@ public class Leader extends Candidate {
                  */
                 ArrayList<Entry> entries = new ArrayList<>();
                 ArrayList result;
-                int prevLogIndex = nextIndex.get(hostid) - 1;
-                long prevLogTerm = log.get(prevLogIndex).getT();
+                int prevLogIndex = nextIndex.get(hostid)-1;
+                long prevLogTerm = prevLogIndex>=0?log.get(prevLogIndex).getT():-1;
                 /**
                  * If last log index ≥ nextIndex for a follower: send
                  * AppendEntries RPC with log entries starting at nextIndex
@@ -174,7 +174,8 @@ public class Leader extends Candidate {
 
     }
 
-    public void run() {
+    public void runLeader() {
+        System.out.println("RMI.Leader.run()");
         initIndexes();
         while (getState() == RAFT.LEADER) {
             startHeartTimer();

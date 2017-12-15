@@ -15,7 +15,7 @@ import raft.Protocol.RAFT;
 public class Follower implements RMIinterface {
 
     //Persistent state on all servers:
-    static long currentTerm;
+    static long currentTerm=0;
     static int votedFor=-1;
     static public Log log = new Log();
     //Volatile state on all servers: 
@@ -29,7 +29,7 @@ public class Follower implements RMIinterface {
     static private Timer timer;
     static int[] interval = {500, 1000};
     static volatile boolean isLeaderAlive = false;
-    static int currentLeader;
+    static int currentLeader=-1;
     //ID  '0'based
     static int id = -1;
     //critical flags
@@ -201,6 +201,7 @@ public class Follower implements RMIinterface {
     }
 
     private void startElectionTimer() {
+        System.err.println("RMI.Follower.startElectionTimer()");
         int period;
         period = (int) (Math.random() * (interval[1] - interval[0]) + interval[0]);
         timer = new Timer(period);
@@ -253,7 +254,9 @@ public class Follower implements RMIinterface {
         //init, uncongested
         try {
             String name = "raftFollower";
-            RMIinterface stub = (RMIinterface) UnicastRemoteObject.exportObject(new Follower(), 0);
+            //possibly related to Garbage collection
+            //Follower obj=new Follower();
+            RMIinterface stub = (RMIinterface) UnicastRemoteObject.exportObject(this, 0);
             Registry registry = LocateRegistry.getRegistry();
             registry.bind(name, stub);
             System.out.println("RMI service is ready..");
@@ -263,7 +266,8 @@ public class Follower implements RMIinterface {
         }
     }
 
-    public void run() {
+    public void runFollower() {
+        System.err.println("RMI.Follower.run()");
         //elaborate congested;
         isRunning = true;
         startElectionTimer();

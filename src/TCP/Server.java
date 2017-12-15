@@ -44,7 +44,7 @@ public class Server {
     }
 
     public ArrayList<InetSocketAddress> initMbpList() {
-
+        System.out.println("Fetch Membership List..");
         publish();
         refresh();
         return mbpList;
