@@ -43,7 +43,10 @@ public class GenericNode {
      * @3. Client
      */
     public static void main(String[] args) throws UnknownHostException, IOException {
-
+        
+        
+        System.err.close();
+                
         if (args.length < 1) {
             System.out.println("=Wrong command!=\n"
                     + "");

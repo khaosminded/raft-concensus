@@ -92,7 +92,6 @@ public class Leader extends Candidate {
         @Override
         public void run() {
             try {
-                System.out.println("RMI.Leader.callAppendEntries.run()");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 /**
@@ -101,8 +100,8 @@ public class Leader extends Candidate {
                  */
                 ArrayList<Entry> entries = new ArrayList<>();
                 ArrayList result;
-                int prevLogIndex = nextIndex.get(hostid)-1;
-                long prevLogTerm = prevLogIndex>=0?log.get(prevLogIndex).getT():-1;
+                int prevLogIndex = nextIndex.get(hostid) - 1;
+                long prevLogTerm = prevLogIndex >= 0 ? log.get(prevLogIndex).getT() : -1;
                 /**
                  * If last log index ≥ nextIndex for a follower: send
                  * AppendEntries RPC with log entries starting at nextIndex
@@ -131,7 +130,9 @@ public class Leader extends Candidate {
                  * decrement nextIndex and retry (§5.3)
                  */
                 if ((boolean) result.get(1)) {
-                    nextIndex.set(hostid, nextIndex.get(hostid) - 1);
+                    if (nextIndex.get(hostid) > 0) {
+                        nextIndex.set(hostid, nextIndex.get(hostid) - 1);
+                    }
                 }
 
                 /**
@@ -175,7 +176,7 @@ public class Leader extends Candidate {
     }
 
     public void runLeader() {
-        System.out.println("RMI.Leader.run()");
+        System.err.println("RMI.Leader.run()");
         initIndexes();
         while (getState() == RAFT.LEADER) {
             startHeartTimer();

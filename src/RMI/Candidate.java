@@ -22,6 +22,7 @@ public class Candidate extends Follower {
     public Candidate(ArrayList<InetSocketAddress> mbpList) {
         super();
         setMbpList(mbpList);
+        
 
     }
 
@@ -37,7 +38,7 @@ public class Candidate extends Follower {
 
     //the only entrance of member list
     public final synchronized void setMbpList(ArrayList<InetSocketAddress> mbpList) {
-        System.out.println("RMI.Candidate.setMbpList(): id initialized");
+        System.out.println("RMI.Candidate.setMbpList(): id refresh..list refresh...");
         votePool.clear();
         this.mbpList.clear();
         termPool.clear();
@@ -113,7 +114,6 @@ public class Candidate extends Follower {
         @Override
         public void run() {
             try {
-                System.err.println("RMI.Candidate.callRequestVote.run()");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 int lastLogIndex = log.size() > 0 ? log.size() - 1 : 0;
@@ -140,7 +140,7 @@ public class Candidate extends Follower {
                 count++;
             }
         }
-        System.err.println(">CANDIDATE GET VOTE:"+count+"\n");
+        System.out.println(">CANDIDATE GET VOTE:"+count+"\n");
         return majorty <= count;
     }
 
@@ -165,7 +165,7 @@ public class Candidate extends Follower {
              */
             if (isLeaderAlive) {
                 state = RAFT.FOLLOWER;
-                System.err.println("candidate->follower");
+                System.out.println("candidate->follower");
                 endElectionTimer();
                 return;
             }
@@ -183,7 +183,7 @@ public class Candidate extends Follower {
              * votes received from majority of servers: become leader
              */
             if (isMajority(votePool)) {
-                System.err.println("candidate->leader");
+                System.out.println("candidate->leader");
                 state = RAFT.LEADER;
                 currentLeader = id;
                 //endElectionTimer();

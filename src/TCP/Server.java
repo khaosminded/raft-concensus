@@ -88,7 +88,7 @@ public class Server {
     }
 
     public static void forward2Another(Protocol.Operation opt, String key, String val, int id) {
-
+        System.err.println("TCP.Server.forward2Another()");
         String addr = mbpList.get(id).getHostString();
         int port = mbpList.get(id).getPort();
         Client client = new Client(addr, port,

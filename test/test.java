@@ -20,10 +20,12 @@ public class test {
 //        ArrayList<Entry> entries =new ArrayList<>();
 //        testHandle.AppendEntries(0, 3, -1, -1, entries, 0);
 //        System.out.println("test.main()");
-        
-        if(true?true:1/0==1)
-        {
-            System.out.println("test.main()");
-        }
+//        
+//        if(true?true:1/0==1)
+//        {
+//            System.out.println("test.main()");
+//        }
+        String str="a:::::";
+        System.out.println(str.toCharArray());
     }
 }

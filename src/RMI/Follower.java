@@ -42,7 +42,6 @@ public class Follower implements RMIinterface {
 
     @Override
     public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm) {
-        System.err.println("RMI.Follower.RequestVote()");
         //init result {term,voteGranted}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -80,7 +79,6 @@ public class Follower implements RMIinterface {
     @Override
     public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
             ArrayList<Entry> entries, int leaderCommit) {
-        System.err.println("RMI.Follower.AppendEntries()");
         //init result {term,success}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -176,6 +174,7 @@ public class Follower implements RMIinterface {
          * If commitIndex > lastApplied: increment lastApplied, apply
          * log[lastApplied] to state machine (§5.3)
          */
+        System.err.println("RMI.Follower.applyLog2Store()");
         while (commitIndex > lastApplied) {
             lastApplied++;
             Entry e = log.get(lastApplied);
@@ -236,7 +235,7 @@ public class Follower implements RMIinterface {
 
             } catch (InterruptedException ex) {
                 //Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
-                System.out.println("followerTimer restart..");
+                System.err.println("followerTimer restart..");
                 return;
             }
             isLeaderAlive = false;
