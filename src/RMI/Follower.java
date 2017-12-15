@@ -42,7 +42,7 @@ public class Follower implements RMIinterface {
 
     @Override
     public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm) {
-        System.out.println("RMI.Follower.RequestVote()");
+        System.err.println("RMI.Follower.RequestVote()");
         //init result {term,voteGranted}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -80,7 +80,7 @@ public class Follower implements RMIinterface {
     @Override
     public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
             ArrayList<Entry> entries, int leaderCommit) {
-        System.out.println("RMI.Follower.AppendEntries()");
+        System.err.println("RMI.Follower.AppendEntries()");
         //init result {term,success}
         ArrayList result = new ArrayList();
         result.add(this.currentTerm > term ? this.currentTerm : term);
@@ -195,6 +195,7 @@ public class Follower implements RMIinterface {
             this.currentTerm = term;
             //CRITICAL reset votedFor, everytime term changes;
             votedFor = -1;
+            System.out.println("----->follower");
             state = RAFT.FOLLOWER;
         }
     }
@@ -237,7 +238,7 @@ public class Follower implements RMIinterface {
             }
             isLeaderAlive = false;
             //TODO
-            System.out.println("followe->candidate");
+            System.out.println("follower->candidate");
             state = RAFT.CANDIDATE;
             isRunning = false;
         }

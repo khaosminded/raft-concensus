@@ -64,7 +64,9 @@ public class Client {
                     out.println(STORE.name());
                     char[] cbuf = new char[1024 * 128];
                     in.read(cbuf, 0, 1024 * 128);
-                    this.serverResp = String.valueOf(cbuf);
+                    String resp=String.valueOf(cbuf);
+                    String cleanResp =resp.substring(0, resp.lastIndexOf(":"));
+                    this.serverResp = cleanResp;
                     break;
                 case PUT:
                     out.println(PUT.name());

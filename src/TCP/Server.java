@@ -192,6 +192,7 @@ public class Server {
                     response = "delete key=" + key + "\n";
                 } else if (opt.equals(STORE.name())) {
                     response = store.list();
+                    
                 } else if (opt.equals(EXIT.name())) {
                     response = exit();
                 } else {

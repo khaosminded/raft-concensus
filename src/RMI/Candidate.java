@@ -112,7 +112,7 @@ public class Candidate extends Follower {
         @Override
         public void run() {
             try {
-                System.out.println("RMI.Candidate.callRequestVote.run()");
+                System.err.println("RMI.Candidate.callRequestVote.run()");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 int lastLogIndex = log.size() > 0 ? log.size() - 1 : 0;
@@ -163,6 +163,7 @@ public class Candidate extends Follower {
              */
             if (isLeaderAlive) {
                 state = RAFT.FOLLOWER;
+                System.err.println("candidate->follower");
                 endElectionTimer();
                 return;
             }
@@ -180,6 +181,7 @@ public class Candidate extends Follower {
              * votes received from majority of servers: become leader
              */
             if (isMajority(votePool)) {
+                System.err.println("candidate->leader");
                 state = RAFT.LEADER;
                 currentLeader = id;
                 //endElectionTimer();
