@@ -15,8 +15,8 @@ import raft.Protocol.RAFT;
 public class Follower implements RMIinterface {
 
     //Persistent state on all servers:
-    static long currentTerm=0;
-    static int votedFor=-1;
+    static long currentTerm = 0;
+    static int votedFor = -1;
     static public Log log = new Log();
     //Volatile state on all servers: 
     /**
@@ -29,7 +29,7 @@ public class Follower implements RMIinterface {
     static private Timer timer;
     static int[] interval = {500, 1000};
     static volatile boolean isLeaderAlive = false;
-    static int currentLeader=-1;
+    static int currentLeader = -1;
     //ID  '0'based
     static int id = -1;
     //critical flags
@@ -66,7 +66,7 @@ public class Follower implements RMIinterface {
          */
         if ((votedFor == -1 || votedFor == candidateId)
                 && ((log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true)
-                || (log.size() <= lastLogIndex + 1 &&  (log.get(log.size()-1).getT()==lastLogTerm) ))) {
+                || (log.size() <= lastLogIndex + 1 && (log.get(log.size() - 1).getT() == lastLogTerm)))) {
             votedFor = candidateId;
             result.set(1, true);
             return result;
@@ -106,9 +106,11 @@ public class Follower implements RMIinterface {
          * 2. Reply false if log doesn’t contain an entry at prevLogIndex whose
          * term matches prevLogTerm (§5.3)
          */
-        if (log.size() <= prevLogIndex ? true : log.get(prevLogIndex).getT() != prevLogTerm) {
-            result.set(1, false);
-            return result;
+        if (prevLogIndex != -1) {
+            if (log.size() <= prevLogIndex ? true : log.get(prevLogIndex).getT() != prevLogTerm) {
+                result.set(1, false);
+                return result;
+            }
         }
         /**
          * 3. If an existing entry conflicts with a new one (same index but
@@ -233,7 +235,7 @@ public class Follower implements RMIinterface {
                 //timeout!!
 
             } catch (InterruptedException ex) {
-                Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
+                //Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
                 System.out.println("followerTimer restart..");
                 return;
             }

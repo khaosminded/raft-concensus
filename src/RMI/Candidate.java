@@ -92,7 +92,7 @@ public class Candidate extends Follower {
                 //timeout!!
 
             } catch (InterruptedException ex) {
-                Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
+                //Logger.getLogger(Timer.class.getName()).log(Level.SEVERE, null, ex);
                 System.out.println("electionTimer interrupt..");
                 return;
             }
