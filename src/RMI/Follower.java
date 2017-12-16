@@ -5,6 +5,8 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import raft.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -27,14 +29,14 @@ public class Follower implements RMIinterface {
     static int lastApplied = -1;
     //flags to ensure leader is alive
     static private Timer timer;
-    static private int[] interval = {800, 1500};
-    static volatile boolean isLeaderAlive = false;
+    static private int[] interval = {500, 1000};
     static int currentLeader = -1;
     //ID  '0'based
     static int id = -1;
-    //critical flags
-    static public volatile RAFT state = RAFT.FOLLOWER;
     static private boolean isRunning = false;
+    //critical flag across threads, should be synchronized
+    static public volatile RAFT state = RAFT.FOLLOWER;
+    static Lock stateLock = new ReentrantLock();
 
     public Follower() {
 
@@ -42,36 +44,48 @@ public class Follower implements RMIinterface {
 
     @Override
     public ArrayList RequestVote(long term, int candidateId, int lastLogIndex, long lastLogTerm) {
-        //init result {term,voteGranted}
-        ArrayList result = new ArrayList();
-        result.add(this.currentTerm > term ? this.currentTerm : term);
-        result.add(true);
-        /**
-         * 1. Reply false if term less than currentTerm (§5.1)
-         */
-        if (this.currentTerm > term) {
-            result.set(1, false);
-            return result;
-        } else {
+        stateLock.lock();
+        try {
+            //init result {term,voteGranted}
+            ArrayList result = new ArrayList();
+            result.add(this.currentTerm > term ? this.currentTerm : term);
+            result.add(true);
+            /**
+             * Server rules.
+             */
+            //>for all server received RPC call
             checkTerm(term);
-        }
-        /**
-         * 2. If votedFor is null or candidateId, and candidate’s log is at
-         * least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
-         *
-         * MORE up-to-date log is defined as log with:  * Higher term # in last
-         * log entry  * --- OR ---  * When term of last log entries match, log
-         * with more entries
-         */
-        if ((votedFor == -1 || votedFor == candidateId)
-                && ((log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true)
-                || (log.size() <= lastLogIndex + 1 && (log.get(log.size() - 1).getT() == lastLogTerm)))) {
-            votedFor = candidateId;
-            result.set(1, true);
-            return result;
-        } else {
-            result.set(1, false);
-            return result;
+            //>for folower
+            if (state == RAFT.FOLLOWER) {
+                heartBeat(candidateId);
+            }
+            /**
+             * 1. Reply false if term less than currentTerm (§5.1)
+             */
+            if (this.currentTerm > term) {
+                result.set(1, false);
+                return result;
+            }
+            /**
+             * 2. If votedFor is null or candidateId, and candidate’s log is at
+             * least as up-to-date as receiver’s log, grant vote (§5.2, §5.4)
+             *
+             * MORE up-to-date log is defined as log with:  * Higher term # in
+             * last log entry  * --- OR ---  * When term of last log entries
+             * match, log with more entries
+             */
+            if ((votedFor == -1 || votedFor == candidateId)
+                    && ((log.size() > 0 ? log.get(log.size() - 1).getT() < lastLogTerm : true)
+                    || (log.size() <= lastLogIndex + 1 && (log.get(log.size() - 1).getT() == lastLogTerm)))) {
+                votedFor = candidateId;
+                result.set(1, true);
+                return result;
+            } else {
+                result.set(1, false);
+                return result;
+            }
+        } finally {
+            stateLock.unlock();
         }
 
     }
@@ -79,74 +93,79 @@ public class Follower implements RMIinterface {
     @Override
     public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
             ArrayList<Entry> entries, int leaderCommit) {
-        //init result {term,success}
-        ArrayList result = new ArrayList();
-        result.add(this.currentTerm > term ? this.currentTerm : term);
-        result.add(true);
-        /**
-         * Server rules.
-         */
-        //>for all server received RPC call
-        checkTerm(term);
-        //>for folower
-        if (state == RAFT.FOLLOWER) {
-            heartBeat(leaderId);
-        }
-        /**
-         * 1. Reply false if term less than currentTerm (§5.1)
-         */
-        if (this.currentTerm > term) {
-            result.set(1, false);
-            return result;
-        }
-
-        /**
-         * 2. Reply false if log doesn’t contain an entry at prevLogIndex whose
-         * term matches prevLogTerm (§5.3)
-         */
-        if (prevLogIndex != -1) {
-            if (log.size() <= prevLogIndex ? true : log.get(prevLogIndex).getT() != prevLogTerm) {
+        stateLock.lock();
+        try {
+            //init result {term,success}
+            ArrayList result = new ArrayList();
+            result.add(this.currentTerm > term ? this.currentTerm : term);
+            result.add(true);
+            /**
+             * Server rules.
+             */
+            //>for all server received RPC call
+            checkTerm(term);
+            //>for folower
+            if (state == RAFT.FOLLOWER) {
+                heartBeat(leaderId);
+            }
+            /**
+             * 1. Reply false if term less than currentTerm (§5.1)
+             */
+            if (this.currentTerm > term) {
                 result.set(1, false);
                 return result;
             }
-        }
-        /**
-         * 3. If an existing entry conflicts with a new one (same index but
-         * different terms), delete the existing entry and all that follow it
-         * (§5.3)
-         *
-         * @prevLogIndex+1= entries[]'s beginning
-         */
-        int i = 0;//critical iterator
-        if (entries.size() > 0) {
-            for (; i < entries.size(); i++) {
-                if (log.size() > i + prevLogIndex + 1
-                        && log.get(i + prevLogIndex + 1).getT() == entries.get(i).getT()) {
-                    //pass  
-                } else {
-                    break;
+
+            /**
+             * 2. Reply false if log doesn’t contain an entry at prevLogIndex
+             * whose term matches prevLogTerm (§5.3)
+             */
+            if (prevLogIndex != -1) {
+                if (log.size() <= prevLogIndex ? true : log.get(prevLogIndex).getT() != prevLogTerm) {
+                    result.set(1, false);
+                    return result;
                 }
             }
-            if (i != entries.size()) {
-                log.delFrom(i + prevLogIndex + 1);
+            /**
+             * 3. If an existing entry conflicts with a new one (same index but
+             * different terms), delete the existing entry and all that follow
+             * it (§5.3)
+             *
+             * @prevLogIndex+1= entries[]'s beginning
+             */
+            int i = 0;//critical iterator
+            if (entries.size() > 0) {
+                for (; i < entries.size(); i++) {
+                    if (log.size() > i + prevLogIndex + 1
+                            && log.get(i + prevLogIndex + 1).getT() == entries.get(i).getT()) {
+                        //pass  
+                    } else {
+                        break;
+                    }
+                }
+                if (i != entries.size()) {
+                    log.delFrom(i + prevLogIndex + 1);
+                }
             }
-        }
-        /**
-         * 4. Append any new entries not already in the log
-         */
-        for (; i < entries.size(); i++) {
-            log.add(entries.get(i));
-        }
-        /**
-         * 5. If leaderCommit > commitIndex, set commitIndex = min(leaderCommit,
-         * index of last new entry)
-         */
-        if (leaderCommit > commitIndex) {
-            int lastNewEntry = prevLogIndex + entries.size();
-            commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
-        }//end Append logic
+            /**
+             * 4. Append any new entries not already in the log
+             */
+            for (; i < entries.size(); i++) {
+                log.add(entries.get(i));
+            }
+            /**
+             * 5. If leaderCommit > commitIndex, set commitIndex =
+             * min(leaderCommit, index of last new entry)
+             */
+            if (leaderCommit > commitIndex) {
+                int lastNewEntry = prevLogIndex + entries.size();
+                commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
+            }//end Append logic
 
-        return result;
+            return result;
+        } finally {
+            stateLock.unlock();
+        }
     }
 
     public int getId() {
@@ -162,7 +181,6 @@ public class Follower implements RMIinterface {
     }
 
     private void heartBeat(int leaderId) {
-        isLeaderAlive = true;
         this.currentLeader = leaderId;
         endElectionTimer();
         applyLog2Store();
@@ -196,7 +214,7 @@ public class Follower implements RMIinterface {
             currentTerm = term;
             //CRITICAL reset votedFor, everytime term changes;
             votedFor = -1;
-            System.err.println("TERM:"+currentTerm+":::::LEADER:"+currentLeader);
+            System.err.println("TERM:" + currentTerm + "<>LEADER:" + currentLeader);
             System.out.println("----->follower");
             state = RAFT.FOLLOWER;
         }
@@ -239,11 +257,15 @@ public class Follower implements RMIinterface {
                 System.err.println("followerTimer restart..");
                 return;
             }
-            isLeaderAlive = false;
             //TODO
-            System.out.println("follower->candidate");
-            state = RAFT.CANDIDATE;
-            isRunning = false;
+            stateLock.lock();
+            try {
+                System.out.println("follower->candidate");
+                state = RAFT.CANDIDATE;
+                isRunning = false;
+            } finally {
+                stateLock.unlock();
+            }
         }
 
     }

@@ -1,5 +1,6 @@
 package RMI;
 
+import static RMI.Follower.state;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -16,14 +17,12 @@ public class Candidate extends Follower {
 
     static volatile ArrayList<InetSocketAddress> mbpList = new ArrayList();
     static ArrayList<Boolean> votePool = new ArrayList();
-    static ArrayList<Long> termPool = new ArrayList();
     static private Timer timer;
-    static private int[] interval={200,300};
+    static private int[] interval = {150, 300};
 
     public Candidate(ArrayList<InetSocketAddress> mbpList) {
         super();
         setMbpList(mbpList);
-        
 
     }
 
@@ -33,7 +32,9 @@ public class Candidate extends Follower {
                 continue;
             }
             callRequestVote call = new callRequestVote(mbpList.get(i), i);
+            //multiThreads or single
             call.start();
+            //call.run();
         }
     }
 
@@ -42,7 +43,6 @@ public class Candidate extends Follower {
         System.err.println("RMI.Candidate.setMbpList(): id refresh..list refresh...");
         votePool.clear();
         this.mbpList.clear();
-        termPool.clear();
 
         this.mbpList.addAll(mbpList);
         for (int i = 0; i < mbpList.size(); i++) {
@@ -56,7 +56,6 @@ public class Candidate extends Follower {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             }
             votePool.add(false);
-            termPool.add(currentTerm);
         }
     }
 
@@ -121,9 +120,11 @@ public class Candidate extends Follower {
                 long lastLogTerm = log.size() > 0 ? log.get(log.size() - 1).getT() : 0;
                 ArrayList result;
                 //TODO might exist problems here
+
                 result = stub.RequestVote(currentTerm, id, lastLogIndex, lastLogTerm);
                 checkTerm((long) result.get(0));
-                termPool.set(hostid, (long) result.get(0));
+                if(state==RAFT.FOLLOWER)
+                    return;
                 votePool.set(hostid, (boolean) result.get(1));
 
             } catch (RemoteException | NotBoundException ex) {
@@ -141,36 +142,31 @@ public class Candidate extends Follower {
                 count++;
             }
         }
-        System.out.println(">CANDIDATE GET VOTE:"+count+"\n");
+        System.out.println(">CANDIDATE GET VOTE:" + count + "\n");
         return majorty <= count;
+    }
+
+    private void resetVotepool() {
+        for (int i = 0; i < votePool.size(); i++) {
+            votePool.set(i, false);
+        }
     }
 
     public void runCandidate() {
         System.err.println("RMI.Candidate.run()");
         //congestion method
-        while (!isLeaderAlive) {
+        while (true) {
             /**
              * On conversion to candidate, start election: Increment currentTerm
              * Vote for self Reset election timer Send RequestVote RPCs to all
              * other servers
              */
+            resetVotepool();
             currentTerm++;
             votedFor = id;
             votePool.set(id, true);
             startElectionTimer();
             broadCast();
-
-            /**
-             * If AppendEntries RPC received from new leader: convert to
-             * follower
-             */
-            if (isLeaderAlive) {
-                state = RAFT.FOLLOWER;
-                System.out.println("candidate->follower");
-                endElectionTimer();
-                return;
-            }
-            
 
             /**
              * If election timeout elapses: start new election
@@ -180,16 +176,32 @@ public class Candidate extends Follower {
             } catch (InterruptedException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             }
-            
-            /**
-             * votes received from majority of servers: become leader
-             */
-            if (isMajority(votePool)) {
-                System.out.println("candidate->leader");
-                state = RAFT.LEADER;
-                currentLeader = id;
-                //endElectionTimer();
-                return;
+
+            stateLock.lock();
+            try {
+                /**
+                 * votes received from majority of servers: become leader
+                 */
+                if (isMajority(votePool) && state == RAFT.CANDIDATE) {
+                    System.out.println("candidate->leader");
+                    state = RAFT.LEADER;
+                    currentLeader = id;
+                    //endElectionTimer();
+                    return;
+                }
+                /**
+                 * If AppendEntries RPC received from new leader: convert to
+                 * follower
+                 */
+                if (state == RAFT.FOLLOWER) {
+                    System.out.println("candidate->follower");
+                    return;
+                }
+                /**
+                 * else start next election
+                 */
+            } finally {
+                stateLock.unlock();
             }
 
         }

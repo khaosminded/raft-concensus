@@ -6,7 +6,7 @@ import raft.*;
  * Protocol constants
  *
  */
-public class Protocol {
+final public class Protocol {
 
     public static enum Operation {
         GET, PUT, DEL, STORE, EXIT;

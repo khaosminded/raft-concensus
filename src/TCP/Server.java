@@ -32,7 +32,7 @@ public class Server {
     //raft handler:: only for STATIC variables
     private Leader raftHandle;
     
-    static final int monitorDelay=2000;
+    static final int monitorDelay=500;
 
     public Server(int portNumber, String mbpAddr, int mbpPortNumber) throws UnknownHostException {
         this.Addr = InetAddress.getLocalHost().getHostAddress();
@@ -117,7 +117,7 @@ public class Server {
                         System.exit(1);
                     }
                     refresh();
-                    System.out.println("I'm a "+Follower.state.name()+"!");
+                    System.out.println("I'm a ="+Follower.state.name()+"= !");
                     raftHandle.setMbpList(mbpList);
                     try {
                         Thread.sleep(monitorDelay);
