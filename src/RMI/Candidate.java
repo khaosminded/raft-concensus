@@ -41,7 +41,7 @@ public class Candidate extends Follower {
     }
 
     //the only entrance of member list
-    private Lock votePoolLock = new ReentrantLock();
+    private Lock votePoolLock = new ReentrantLock(true);
 
     public final void setMbpList(ArrayList<InetSocketAddress> mbpList) {
         votePoolLock.lock();
@@ -172,17 +172,18 @@ public class Candidate extends Follower {
         System.err.println("RMI.Candidate.run()");
         //congestion method
         while (state == RAFT.CANDIDATE) {
-            if (stateLock.tryLock() && votePoolLock.tryLock()) {
+
+            /**
+             * On conversion to candidate, start election: Increment currentTerm
+             * Vote for self Reset election timer Send RequestVote RPCs to all
+             * other servers
+             */
+            resetVotepool();
+            currentTerm++;
+            votedFor = id;
+            votePool.set(id, true);
+            if (votePoolLock.tryLock()) {
                 try {
-                    /**
-                     * On conversion to candidate, start election: Increment
-                     * currentTerm Vote for self Reset election timer Send
-                     * RequestVote RPCs to all other servers
-                     */
-                    resetVotepool();
-                    currentTerm++;
-                    votedFor = id;
-                    votePool.set(id, true);
                     startElectionTimer();
                     broadCast();
 
@@ -194,37 +195,42 @@ public class Candidate extends Follower {
                     } catch (InterruptedException ex) {
                         Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
                     }
-
-                    /**
-                     * votes received from majority of servers: become leader
-                     */
-                    if (isMajority(votePool)) {
-                        System.out.println("candidate->leader");
-                        state = RAFT.LEADER;
-                        currentLeader = id;
-                        //endElectionTimer();
-                        return;
+                    if (stateLock.tryLock()) {
+                        try {
+                            /**
+                             * votes received from majority of servers: become
+                             * leader
+                             */
+                            if (isMajority(votePool)) {
+                                System.out.println("candidate->leader");
+                                state = RAFT.LEADER;
+                                currentLeader = id;
+                                //endElectionTimer();
+                                return;
+                            }
+                            /**
+                             * If AppendEntries RPC received from new leader:
+                             * convert to follower
+                             */
+                            if (state == RAFT.FOLLOWER) {
+                                System.out.println("candidate->follower");
+                                return;
+                            }
+                            /**
+                             * else start next election
+                             */
+                        } finally {
+                            stateLock.unlock();
+                        }
+                    } else {
+                        System.err.println("stateLock.tryLock() FAIL");
                     }
-                    /**
-                     * If AppendEntries RPC received from new leader: convert to
-                     * follower
-                     */
-                    if (state == RAFT.FOLLOWER) {
-                        System.out.println("candidate->follower");
-                        return;
-                    }
-                    /**
-                     * else start next election
-                     */
                 } finally {
-                    stateLock.unlock();
                     votePoolLock.unlock();
                 }
             } else {
-                System.err.println("stateLock.tryLock() && votePoolLock.tryLock()="
-                        + stateLock.tryLock() +"&&"+ votePoolLock.tryLock());
+                System.err.println("votePoolLock.tryLock() FAIL");
             }
-
         }
     }
 }

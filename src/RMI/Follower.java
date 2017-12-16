@@ -35,7 +35,7 @@ public class Follower implements RMIinterface {
     static int id = -1;
     //critical flag across threads, should be synchronized
     static public volatile RAFT state = RAFT.FOLLOWER;
-    static Lock stateLock = new ReentrantLock();
+    static Lock stateLock = new ReentrantLock(true);
 
     public Follower() {
 
