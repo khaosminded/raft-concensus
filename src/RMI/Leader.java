@@ -7,6 +7,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import raft.Entry;
@@ -71,7 +73,7 @@ public class Leader extends Candidate {
         public void run() {
             try {
                 Thread.sleep(sleeptime);
-                System.out.println("I'm leader. <heartbeat>...");
+                
             } catch (InterruptedException ex) {
                 Logger.getLogger(Leader.class.getName()).log(Level.SEVERE, null, ex);
                 return;
@@ -92,6 +94,7 @@ public class Leader extends Candidate {
         @Override
         public void run() {
             try {
+                System.out.println("TO NODE/ "+hostid+" <heartbeat>...");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 /**
@@ -103,7 +106,7 @@ public class Leader extends Candidate {
                 int prevLogIndex = nextIndex.get(hostid) - 1;
                 long prevLogTerm = prevLogIndex >= 0 ? log.get(prevLogIndex).getT() : -1;
                 /**
-                 * If last log index ≥ nextIndex for a follower: send
+                 * If last log index ≥ nextIndex for a follower. send
                  * AppendEntries RPC with log entries starting at nextIndex
                  */
                 int maxSend = sendLimit;
@@ -126,37 +129,26 @@ public class Leader extends Candidate {
 //                                i:matchIndex.get(hostid));
                 }
                 /**
-                 * If AppendEntries fails because of log inconsistency:
+                 * If AppendEntries fails because of log inconsistency.
                  * decrement nextIndex and retry (§5.3)
                  */
-                if ((boolean) result.get(1)) {
-                    if (nextIndex.get(hostid) > 0) {
+                if ((boolean) result.get(1) == false) {
+                    if (nextIndex.get(hostid) > 100) {
+                        nextIndex.set(hostid, nextIndex.get(hostid) - 100);
+                    } else if (nextIndex.get(hostid) > 10) {
+                        nextIndex.set(hostid, nextIndex.get(hostid) - 10);
+                    } else if (nextIndex.get(hostid) > 1) {
                         nextIndex.set(hostid, nextIndex.get(hostid) - 1);
                     }
+                    return;
                 }
 
-                /**
-                 * If there exists an N such that N > commitIndex, a majority of
-                 * matchIndex[i] ≥ N, and log[N].term == currentTerm: set
-                 * commitIndex = N (§5.3, §5.4)
-                 */
-                //take care of leader itself
-                //worst O(log.size * (mbpList.size-1))
-                for (int N = commitIndex + 1; N < log.size(); N++) {
-                    int majority = matchIndex.size() / 2;
-                    int count = 0;
-                    for (int i = 0; i < matchIndex.size(); i++) {
-                        if (matchIndex.get(i) >= N) {
-                            count++;
-                        }
-                    }
-                    //don't know why algorithm author said check currentTerm
-                    if (count >= majority && log.get(N).getT() == currentTerm) {
-                        commitIndex = N;//MAX(such N)
-                    }
+                stateLock.lock();
+                try {
+                    checkTerm((Long) result.get(0));
+                } finally {
+                    stateLock.unlock();
                 }
-                checkTerm((Long) result.get(0));
-
             } catch (RemoteException ex) {
                 Logger.getLogger(Candidate.class.getName()).log(Level.SEVERE, null, ex);
             } catch (NotBoundException ex) {
@@ -182,6 +174,24 @@ public class Leader extends Candidate {
             startHeartTimer();
 
             broadCast();
+            /**
+             * If there exists an N such that N > commitIndex. a majority of
+             * matchIndex[i] ≥ N, and log[N].term == currentTerm: set commitIndex = N (§5.3, §5.4)
+             * take care of leader itself; worst O(log.size * (mbpList.size-1))
+             */
+            for (int N = commitIndex + 1; N < log.size(); N++) {
+                int majority = matchIndex.size() / 2;
+                int count = 0;
+                for (int i = 0; i < matchIndex.size(); i++) {
+                    if (matchIndex.get(i) >= N) {
+                        count++;
+                    }
+                }
+                //don't know why algorithm author said check currentTerm
+                if (count >= majority && log.get(N).getT() == currentTerm) {
+                    commitIndex = N;//MAX(such N)
+                }
+            }
             applyLog2Store();
 
             try {

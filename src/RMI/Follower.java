@@ -30,10 +30,9 @@ public class Follower implements RMIinterface {
     //flags to ensure leader is alive
     static private Timer timer;
     static private int[] interval = {500, 1000};
-    static int currentLeader = -1;
     //ID  '0'based
+    static int currentLeader = -1;
     static int id = -1;
-    static private boolean isRunning = false;
     //critical flag across threads, should be synchronized
     static public volatile RAFT state = RAFT.FOLLOWER;
     static Lock stateLock = new ReentrantLock();
@@ -120,12 +119,13 @@ public class Follower implements RMIinterface {
              * 2. Reply false if log doesn’t contain an entry at prevLogIndex
              * whose term matches prevLogTerm (§5.3)
              */
-            if (prevLogIndex != -1) {
+            if (prevLogIndex != -1/*cold start*/) {
                 if (log.size() <= prevLogIndex ? true : log.get(prevLogIndex).getT() != prevLogTerm) {
                     result.set(1, false);
                     return result;
                 }
             }
+            
             /**
              * 3. If an existing entry conflicts with a new one (same index but
              * different terms), delete the existing entry and all that follow
@@ -262,7 +262,6 @@ public class Follower implements RMIinterface {
             try {
                 System.out.println("follower->candidate");
                 state = RAFT.CANDIDATE;
-                isRunning = false;
             } finally {
                 stateLock.unlock();
             }
@@ -292,10 +291,9 @@ public class Follower implements RMIinterface {
 
     public void runFollower() {
         System.err.println("RMI.Follower.run()");
-        //elaborate congested;
-        isRunning = true;
+        //designed congestion;
         startElectionTimer();
-        while (isRunning) {
+        while (state==RAFT.FOLLOWER) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ex) {
