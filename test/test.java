@@ -16,7 +16,7 @@ import raft.Entry;
  *
  * @author hanxinlei
  */
-public class test {
+public class test {//nothing
 
     static volatile Integer a = 0;
     static A t1 = new A();
