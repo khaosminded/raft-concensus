@@ -218,6 +218,7 @@ public class Candidate extends Follower {
                      */
                 } finally {
                     stateLock.unlock();
+                    votePoolLock.unlock();
                 }
             } else {
                 System.err.println("stateLock.tryLock() && votePoolLock.tryLock()="
