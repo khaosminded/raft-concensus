@@ -9,7 +9,7 @@ import raft.*;
 final public class Protocol {
 
     public static enum Operation {
-        GET, PUT, DEL, STORE, EXIT;
+        GET, PUT, DEL, STORE, EXIT,LOG;
     }
 
     public static enum TYPE {

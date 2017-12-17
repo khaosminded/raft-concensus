@@ -43,10 +43,9 @@ public class GenericNode {
      * @3. Client
      */
     public static void main(String[] args) throws UnknownHostException, IOException {
-        
-        
+
         System.err.close();
-                
+
         if (args.length < 1) {
             System.out.println("=Wrong command!=\n"
                     + "");
@@ -67,7 +66,7 @@ public class GenericNode {
                         Leader raftHandle = new RaftService(server.initMbpList()).runRaftService();
                         server.setRaftHandle(raftHandle);
                         server.runServer();
-                        
+
                         break;
                     default:
                         System.out.println("Server Wrong command!");
@@ -84,6 +83,8 @@ public class GenericNode {
                             opt = EXIT;
                         } else if (STORE.name().equalsIgnoreCase(args[3])) {
                             opt = STORE;
+                        } else if (LOG.name().equalsIgnoreCase(args[3])) {
+                            opt = LOG;
                         } else {
                             wc = true;
                         }

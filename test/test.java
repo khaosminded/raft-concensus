@@ -6,6 +6,8 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import raft.Entry;
+import raft.Log;
+import raft.Protocol;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -35,9 +37,12 @@ public class test {//nothing
 ////        }
 //        String str="a:::::";
 //        System.out.println(str.toCharArray());
-        t1.start();
-        t2.start();
-
+//        t1.start();
+//        t2.start();
+        Entry e=new Entry(Protocol.Operation.GET, "a","123", 0);
+        Log log=new Log();
+        log.add(e);log.add(e);log.add(e);log.add(e);
+        System.out.println(log.displayLog());
     }
 
     static class A extends Thread {

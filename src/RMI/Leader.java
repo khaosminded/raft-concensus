@@ -94,7 +94,7 @@ public class Leader extends Candidate {
         @Override
         public void run() {
             try {
-                System.out.println("TO NODE/ "+hostid+" <heartbeat>...");
+                System.err.println("TO NODE/ "+hostid+" <heartbeat>...");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 /**

@@ -21,7 +21,8 @@ public class Client {
     private Protocol.Operation opt;
     private String serverResp;
     private Protocol.TYPE type;
-    private final int clientTimeOut=3000;
+    private final int clientTimeOut = 3000;
+
     public Client(String addr, int port, Protocol.Operation opt, Protocol.TYPE type) {
         super();
         try {
@@ -44,7 +45,9 @@ public class Client {
 
     public String runClient(String key, String value) {
         try {
-
+            char[] cbuf = new char[1024 * 128];
+            int endIndex;
+            String cleanResp;
             switch (opt) {
                 case EXIT:
                     out.println(EXIT.name());
@@ -60,13 +63,19 @@ public class Client {
                     out.println(key);
                     this.serverResp = in.readLine();
                     break;
+
                 case STORE:
                     out.println(STORE.name());
-                    char[] cbuf = new char[1024 * 128];
                     in.read(cbuf, 0, 1024 * 128);
-                    String resp=String.valueOf(cbuf);
-                    int end=resp.lastIndexOf(":");
-                    String cleanResp =resp.substring(0, end+1);
+                    endIndex = String.valueOf(cbuf).lastIndexOf(":");
+                    cleanResp = String.valueOf(cbuf).substring(0, endIndex + 1);
+                    this.serverResp = cleanResp;
+                    break;
+                case LOG:
+                    out.println(LOG.name());
+                    in.read(cbuf, 0, 1024 * 128);
+                    endIndex = String.valueOf(cbuf).lastIndexOf(":");
+                    cleanResp = String.valueOf(cbuf).substring(0, endIndex + 1);
                     this.serverResp = cleanResp;
                     break;
                 case PUT:
@@ -81,7 +90,7 @@ public class Client {
             if (type.equals(CLIENT)) {
                 System.out.println("server respond:" + serverResp);
             } else {
-                System.out.println("From " + clientSocket.getInetAddress() + ":" + serverResp);
+                System.err.println("From " + clientSocket.getInetAddress() + ":" + serverResp);
             }
 
         } catch (IOException e) {

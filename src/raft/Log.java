@@ -36,10 +36,18 @@ public class Log {
     synchronized public void set(int index, Entry e) {
         entries.set(index, e);
     }
-
+    
     synchronized public void delFrom(int index) {
         for (int i = index; i < entries.size(); i++) {
             entries.remove(index);
         }
     }
+    public String displayLog()
+    {
+        String result="";
+        for(int i=0;i<entries.size();i++)
+            result+=entries.get(i).toString();
+        return result;
+    }
+    
 }

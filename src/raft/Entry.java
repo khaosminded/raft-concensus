@@ -53,4 +53,11 @@ public class Entry implements Serializable{
         this.value = value;
         this.term = term;
     }
+    @Override
+    public String toString()
+    {
+        String result;
+        result="\n#"+opt.name()+"\t#"+key+"\t#"+value+"\t#"+term;
+        return result;
+    }
 }

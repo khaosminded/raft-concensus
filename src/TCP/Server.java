@@ -12,6 +12,7 @@ import raft.Protocol;
 import static raft.Protocol.Operation.DEL;
 import static raft.Protocol.Operation.EXIT;
 import static raft.Protocol.Operation.GET;
+import static raft.Protocol.Operation.LOG;
 import static raft.Protocol.Operation.PUT;
 import static raft.Protocol.Operation.STORE;
 import raft.kvstore;
@@ -117,7 +118,7 @@ public class Server {
                         System.exit(1);
                     }
                     refresh();
-                    System.out.println("I'm a ="+Follower.state.name()+"= !");
+                    System.err.println("I'm a ="+Follower.state.name()+"= !");
                     raftHandle.setMbpList(mbpList);
                     try {
                         Thread.sleep(monitorDelay);
@@ -192,6 +193,9 @@ public class Server {
                     response = "delete key=" + key + "\n";
                 } else if (opt.equals(STORE.name())) {
                     response = store.list();
+                    
+                }else if (opt.equals(LOG.name())) {
+                    response = Follower.log.displayLog()+":";
                     
                 } else if (opt.equals(EXIT.name())) {
                     response = exit();
