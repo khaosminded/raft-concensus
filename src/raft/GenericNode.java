@@ -44,7 +44,7 @@ public class GenericNode {
      */
     public static void main(String[] args) throws UnknownHostException, IOException {
 
-        System.err.close();
+        //System.err.close();
 
         if (args.length < 1) {
             System.out.println("=Wrong command!=\n"
@@ -133,7 +133,7 @@ public class GenericNode {
 
     static private void help() {
         System.out.println("Launch Client:\n"
-                + "tc <host> <port> [put <key> <val>|get <key>|del <key>|store|exit]\n\n"
+                + "tc <host> <port> [put <key> <val>|get <key>|del <key>|store|exit|log]\n\n"
                 + "Launch Server with RAFT service:\n"
                 + "ts <port2listen> <mbpAddress>\n\n"
                 + "Launch Membership Server:\n"

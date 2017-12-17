@@ -22,6 +22,10 @@ public class Client {
     private String serverResp;
     private Protocol.TYPE type;
     private final int clientTimeOut = 3000;
+    //buffer
+    static char[] cbuf = new char[1024 * 1024];
+    int endIndex;
+    String cleanResp;
 
     public Client(String addr, int port, Protocol.Operation opt, Protocol.TYPE type) {
         super();
@@ -45,9 +49,7 @@ public class Client {
 
     public String runClient(String key, String value) {
         try {
-            char[] cbuf = new char[1024 * 128];
-            int endIndex;
-            String cleanResp;
+
             switch (opt) {
                 case EXIT:
                     out.println(EXIT.name());
@@ -66,14 +68,14 @@ public class Client {
 
                 case STORE:
                     out.println(STORE.name());
-                    in.read(cbuf, 0, 1024 * 128);
+                    in.read(cbuf, 0, 1024 * 1024);
                     endIndex = String.valueOf(cbuf).lastIndexOf(":");
                     cleanResp = String.valueOf(cbuf).substring(0, endIndex + 1);
                     this.serverResp = cleanResp;
                     break;
                 case LOG:
                     out.println(LOG.name());
-                    in.read(cbuf, 0, 1024 * 128);
+                    in.read(cbuf, 0, 1024 * 1024);
                     endIndex = String.valueOf(cbuf).lastIndexOf(":");
                     cleanResp = String.valueOf(cbuf).substring(0, endIndex + 1);
                     this.serverResp = cleanResp;
