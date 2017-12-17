@@ -48,12 +48,12 @@ public class Follower implements RMIinterface {
             //init result {term,voteGranted}
             ArrayList result = new ArrayList();
             result.add(this.currentTerm > term ? this.currentTerm : term);
-            result.add(true);
+            result.add(false);
             /**
              * Server rules.
              */
             //>for all server received RPC call
-            checkTerm(term);
+            checkTerm(term, candidateId);
             //>for folower
             if (state == RAFT.FOLLOWER) {
                 heartBeat(candidateId);
@@ -102,10 +102,15 @@ public class Follower implements RMIinterface {
              * Server rules.
              */
             //>for all server received RPC call
-            checkTerm(term);
+            checkTerm(term, leaderId);
             //>for folower
             if (state == RAFT.FOLLOWER) {
                 heartBeat(leaderId);
+                //I refresh votedFor here because my membership list is unstable
+                //Leader's id sometime assigned to a new member;
+                //at this point all followers in this term are still votedFor the "Leader's" id
+                //which would cause the new "member" become a leader too.
+                votedFor = leaderId;//when mbpserver reassign id, Leader broadcast the changes in heartBeat Dec.16
             }
             /**
              * 1. Reply false if term less than currentTerm (§5.1)
@@ -125,7 +130,7 @@ public class Follower implements RMIinterface {
                     return result;
                 }
             }
-            
+
             /**
              * 3. If an existing entry conflicts with a new one (same index but
              * different terms), delete the existing entry and all that follow
@@ -134,19 +139,18 @@ public class Follower implements RMIinterface {
              * @prevLogIndex+1= entries[]'s beginning
              */
             int i = 0;//critical iterator
-            if (entries.size() > 0) {
-                for (; i < entries.size(); i++) {
-                    if (log.size() > i + prevLogIndex + 1
-                            && log.get(i + prevLogIndex + 1).getT() == entries.get(i).getT()) {
-                        //pass  
-                    } else {
-                        break;
-                    }
-                }
-                if (i != entries.size()) {
-                    log.delFrom(i + prevLogIndex + 1);
+            for (; i < entries.size(); i++) {
+                if (log.size() > i + prevLogIndex + 1
+                        && log.get(i + prevLogIndex + 1).getT() == entries.get(i).getT()) {
+                    //pass  
+                } else {
+                    break;
                 }
             }
+            if (i != entries.size()) {
+                log.delFrom(i + prevLogIndex + 1);
+            }
+            
             /**
              * 4. Append any new entries not already in the log
              */
@@ -158,7 +162,7 @@ public class Follower implements RMIinterface {
              * min(leaderCommit, index of last new entry)
              */
             if (leaderCommit > commitIndex) {
-                int lastNewEntry = prevLogIndex + entries.size();
+                int lastNewEntry = log.size()-1;
                 commitIndex = leaderCommit < lastNewEntry ? leaderCommit : lastNewEntry;
             }//end Append logic
 
@@ -182,6 +186,7 @@ public class Follower implements RMIinterface {
 
     private void heartBeat(int leaderId) {
         this.currentLeader = leaderId;
+
         endElectionTimer();
         applyLog2Store();
         startElectionTimer();
@@ -205,7 +210,7 @@ public class Follower implements RMIinterface {
         }
     }
 
-    public void checkTerm(long term) {
+    public void checkTerm(long term, int candidateId) {
         /**
          * FOR All Servers If RPC request or response contains term T >
          * currentTerm: set currentTerm = T, convert to follower (§5.1)
@@ -213,7 +218,7 @@ public class Follower implements RMIinterface {
         if (currentTerm < term) {
             currentTerm = term;
             //CRITICAL reset votedFor, everytime term changes;
-            votedFor = -1;
+            votedFor = candidateId;
             System.err.println("TERM:" + currentTerm + "<>LEADER:" + currentLeader);
             System.out.println("----->follower");
             state = RAFT.FOLLOWER;
@@ -293,7 +298,7 @@ public class Follower implements RMIinterface {
         System.err.println("RMI.Follower.run()");
         //designed congestion;
         startElectionTimer();
-        while (state==RAFT.FOLLOWER) {
+        while (state == RAFT.FOLLOWER) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ex) {

@@ -137,7 +137,7 @@ public class Leader extends Candidate {
                         nextIndex.set(hostid, nextIndex.get(hostid) - 100);
                     } else if (nextIndex.get(hostid) > 10) {
                         nextIndex.set(hostid, nextIndex.get(hostid) - 10);
-                    } else if (nextIndex.get(hostid) > 1) {
+                    } else if (nextIndex.get(hostid) > 0) {
                         nextIndex.set(hostid, nextIndex.get(hostid) - 1);
                     }
                     return;
@@ -145,7 +145,7 @@ public class Leader extends Candidate {
 
                 stateLock.lock();
                 try {
-                    checkTerm((Long) result.get(0));
+                    checkTerm((Long) result.get(0),hostid);
                 } finally {
                     stateLock.unlock();
                 }

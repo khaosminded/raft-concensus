@@ -19,6 +19,7 @@ public class Candidate extends Follower {
 
     static volatile ArrayList<InetSocketAddress> mbpList = new ArrayList();
     static ArrayList<Boolean> votePool = new ArrayList();
+    private Lock votePoolLock = new ReentrantLock(true);
     static private Timer timer;
     static private int[] interval = {150, 300};
 
@@ -41,7 +42,7 @@ public class Candidate extends Follower {
     }
 
     //the only entrance of member list
-    private Lock votePoolLock = new ReentrantLock(true);
+    
 
     public final void setMbpList(ArrayList<InetSocketAddress> mbpList) {
         votePoolLock.lock();
@@ -133,7 +134,7 @@ public class Candidate extends Follower {
                 result = stub.RequestVote(currentTerm, id, lastLogIndex, lastLogTerm);
                 stateLock.lock();
                 try {
-                    checkTerm((long) result.get(0));
+                    checkTerm((long) result.get(0), hostid);
                     if (state == RAFT.FOLLOWER) {
                         return;
                     }
@@ -178,11 +179,11 @@ public class Candidate extends Follower {
              * Vote for self Reset election timer Send RequestVote RPCs to all
              * other servers
              */
-            resetVotepool();
-            currentTerm++;
-            votedFor = id;
-            votePool.set(id, true);
             if (votePoolLock.tryLock()) {
+                resetVotepool();
+                currentTerm++;
+                votedFor = id;
+                votePool.set(id, true);
                 try {
                     startElectionTimer();
                     broadCast();
