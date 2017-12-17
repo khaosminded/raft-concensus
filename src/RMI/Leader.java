@@ -73,7 +73,7 @@ public class Leader extends Candidate {
         public void run() {
             try {
                 Thread.sleep(sleeptime);
-                
+
             } catch (InterruptedException ex) {
                 Logger.getLogger(Leader.class.getName()).log(Level.SEVERE, null, ex);
                 return;
@@ -94,7 +94,7 @@ public class Leader extends Candidate {
         @Override
         public void run() {
             try {
-                System.err.println("TO NODE/ "+hostid+" <heartbeat>...");
+                System.err.println("TO NODE/ " + hostid + " <heartbeat>...");
                 Registry registry = LocateRegistry.getRegistry(host.getHostString());
                 RMIinterface stub = (RMIinterface) registry.lookup("raftFollower");
                 /**
@@ -145,7 +145,7 @@ public class Leader extends Candidate {
 
                 stateLock.lock();
                 try {
-                    checkTerm((Long) result.get(0),hostid);
+                    checkTerm((Long) result.get(0), hostid);
                 } finally {
                     stateLock.unlock();
                 }
@@ -176,23 +176,29 @@ public class Leader extends Candidate {
             broadCast();
             /**
              * If there exists an N such that N > commitIndex. a majority of
-             * matchIndex[i] ≥ N, and log[N].term == currentTerm: set commitIndex = N (§5.3, §5.4)
-             * take care of leader itself; worst O(log.size * (mbpList.size-1))
+             * matchIndex[i] ≥ N, and log[N].term == currentTerm: set
+             * commitIndex = N (§5.3, §5.4) take care of leader itself; worst
+             * O(log.size * (mbpList.size-1))
              */
-            for (int N = commitIndex + 1; N < log.size(); N++) {
-                int majority = matchIndex.size() / 2;
-                int count = 0;
-                for (int i = 0; i < matchIndex.size(); i++) {
-                    if (matchIndex.get(i) >= N) {
-                        count++;
+            logLock.lock();
+            try {
+                for (int N = commitIndex + 1; N < log.size(); N++) {
+                    int majority = matchIndex.size() / 2;
+                    int count = 0;
+                    for (int i = 0; i < matchIndex.size(); i++) {
+                        if (matchIndex.get(i) >= N) {
+                            count++;
+                        }
+                    }
+                    //don't know why algorithm author said check currentTerm
+                    if (count >= majority && log.get(N).getT() == currentTerm) {
+                        commitIndex = N;//MAX(such N)
                     }
                 }
-                //don't know why algorithm author said check currentTerm
-                if (count >= majority && log.get(N).getT() == currentTerm) {
-                    commitIndex = N;//MAX(such N)
-                }
+                applyLog2Store();
+            } finally {
+                logLock.unlock();
             }
-            applyLog2Store();
 
             try {
                 timer.join();

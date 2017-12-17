@@ -1,5 +1,11 @@
 
 import RMI.Follower;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -25,8 +31,8 @@ public class test {//nothing
     static B t2 = new B();
     static Lock lock = new ReentrantLock();
 
-    public static void main(String args[]) {
-//        Follower testHandle= new Follower();
+    public static void main(String args[]) throws FileNotFoundException, IOException, ClassNotFoundException {
+        //        Follower testHandle= new Follower();
 //        ArrayList<Entry> entries =new ArrayList<>();
 //        testHandle.AppendEntries(0, 3, -1, -1, entries, 0);
 //        System.out.println("test.main()");
@@ -39,10 +45,34 @@ public class test {//nothing
 //        System.out.println(str.toCharArray());
 //        t1.start();
 //        t2.start();
-        Entry e=new Entry(Protocol.Operation.GET, "a","123", 0);
-        Log log=new Log();
-        log.add(e);log.add(e);log.add(e);log.add(e);
-        System.out.println(log.displayLog());
+        Entry e = new Entry(Protocol.Operation.GET, "a", "123", 0);
+        Entry e2 = new Entry(Protocol.Operation.GET, "b", "321", 0);
+        Log log = new Log();
+//        log.add(e);log.add(e);log.add(e);log.add(e);
+//        System.out.println(log.displayLog());
+
+        FileOutputStream fout;
+        fout = new FileOutputStream("log.data", true);
+        ObjectOutputStream out = new ObjectOutputStream(fout);
+        out.writeObject(e);
+        out.writeObject(e2);
+        out.close();
+
+        FileInputStream fin;
+        fin = new FileInputStream("log.data");
+        ObjectInputStream in = new ObjectInputStream(fin);
+
+        while (true) {
+            try {
+                e = (Entry) in.readObject();
+                System.out.println(e.toString());
+            } catch (IOException ex) {
+                break;
+            }
+        }
+
+        in.close();
+
     }
 
     static class A extends Thread {
@@ -72,10 +102,9 @@ public class test {//nothing
 
     }
 
+    static class B extends Thread {
 
-static class B extends Thread {
-
-@Override
+        @Override
         public void run() {
             while (true) {
                 if (lock.tryLock()) {
@@ -97,6 +126,6 @@ static class B extends Thread {
             }
 
         }
-}
+    }
 
 }

@@ -37,6 +37,7 @@ public class RaftService {
             System.out.println("RAFT service is running...");
 
             raftHandle.initRMI();
+            raftHandle.initLogFromDisk();
             while (true) {
                 if (raftHandle.state == RAFT.FOLLOWER) {
                     raftHandle.runFollower();

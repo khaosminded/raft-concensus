@@ -20,6 +20,7 @@ public class Follower implements RMIinterface {
     static long currentTerm = 0;
     static int votedFor = -1;
     static public Log log = new Log();
+    static Lock logLock = new ReentrantLock(true);
     //Volatile state on all servers: 
     /**
      * @note::assumed to be '0' based index::match with ArrayList index changed
@@ -93,6 +94,7 @@ public class Follower implements RMIinterface {
     public ArrayList AppendEntries(long term, int leaderId, int prevLogIndex, long prevLogTerm,
             ArrayList<Entry> entries, int leaderCommit) {
         stateLock.lock();
+        logLock.lock();
         try {
             //init result {term,success}
             ArrayList result = new ArrayList();
@@ -168,6 +170,7 @@ public class Follower implements RMIinterface {
 
             return result;
         } finally {
+            logLock.unlock();
             stateLock.unlock();
         }
     }
@@ -191,16 +194,20 @@ public class Follower implements RMIinterface {
         applyLog2Store();
         startElectionTimer();
     }
-
-    void applyLog2Store() {
+    public void initLogFromDisk(){
+        log.FromDisk();
+    }
+    void  applyLog2Store() {
         /**
          * If commitIndex > lastApplied: increment lastApplied, apply
          * log[lastApplied] to state machine (§5.3)
          */
+        
         System.err.println("RMI.Follower.applyLog2Store()");
         while (commitIndex > lastApplied) {
             lastApplied++;
             Entry e = log.get(lastApplied);
+            log.toDisk(e);
             if (e.getO() == PUT) {
                 Server.store.put(e.getK(), e.getV());
             }
